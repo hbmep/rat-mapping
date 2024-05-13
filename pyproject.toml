@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paper"
+version = "0.0.1"
+description = "Package for rat mapping paper"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy==1.24.2",
+    "pandas==2.0.2",
+    "scikit-learn==1.2.1",
+    "jax[cpu]==0.4.24",
+    "numpyro[cpu]==0.13.2",
+    "arviz==0.18.0",
+    "matplotlib==3.7.0",
+    "seaborn==0.12.2",
+    "joblib==1.3.2",
+    "jupyter==1.0.0",
+    "mat73==0.60",
+    "fastparquet==2023.2.0"
+]
