@@ -13,19 +13,17 @@ if __name__ == "__main__":
     src = DATA_PATH 
     d = {}
     df = pd.read_csv(src)
-    combo = df[["participant", "compound_position"]].apply(tuple, axis=1).unique().tolist()
+    combo = df[["participant", "compound_position", "compound_size"]].apply(tuple, axis=1).unique().tolist()
     muscle = ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
-    combo = [(c[0], c[1], m) for c in combo for m in muscle]
+    combo = [(c[0], c[1], c[2], m,) for c in combo for m in muscle]
 
-    for par, pos, musc in combo:
-        print(par, pos, musc)
-        src= f"/home/andres/repos/rat-mapping-paper/reports/J_RCML_000/sub__{par}/pos__{pos}/resp__{musc}/non_hierarchical_bayesian_model/inference.pkl"
+    for par, pos,size, musc  in combo:
+        # print(par, pos, size, musc)
+        src= f"/home/andres/repos/rat-mapping-paper/reports/C_SMA_LAR/sub__{par}/pos__{pos}/size__{size}/resp__{musc}/non_hierarchical_bayesian_model/inference.pkl"
         with open(src, "rb") as f:
             _,_,posterior_samples = pickle.load(f)
-
-        d[(par, pos, musc)] = posterior_samples 
+        d[(par, pos, size, musc)] = posterior_samples 
     
-    path = "/home/andres/repos/rat-mapping-paper/reports/J_RCML_000/combine.pkl"
+    path = "/home/andres/repos/rat-mapping-paper/reports/C_SMA_LAR/combine.pkl"
     with open(path, 'wb') as handle:
         pickle.dump(d, handle, protocol=pickle.HIGHEST_PROTOCOL)
-

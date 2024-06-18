@@ -30,6 +30,12 @@ def main(build_dir):
     src = DATA_PATH
     data = pd.read_csv(src)
 
+    # Change column names from auc to actual muscles
+    auc_map = {
+        "auc_1": "LADM", "auc_2": "LBiceps", "auc_3": "LBicepsFemoris", "auc_4": "LDeltoid", "auc_5": "LECR", "auc_6": "LFCR", "auc_7": "LTriceps", "auc_8": "RBiceps"
+    }
+    data = data.rename(columns=auc_map).copy()
+
 
     def run_inference(
         subject,
@@ -50,6 +56,7 @@ def main(build_dir):
             build_dir,
             subject_dir,
             position_dir,
+            size_dir,
             response_dir,
             M.NAME
         )
