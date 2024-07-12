@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import jax.numpy as jnp
 import numpyro
@@ -7,6 +9,8 @@ from hbmep.config import Config
 from hbmep.nn import functional as F
 from hbmep.model import GammaModel
 from hbmep.model.utils import Site as site
+
+logger = logging.getLogger(__name__)
 
 
 class HierarchicalBayesianModel(GammaModel):
@@ -64,8 +68,11 @@ class HierarchicalBayesianModel(GammaModel):
                 )
 
                 with numpyro.plate(site.n_features[0], n_features[0]):
-                    a_delta = numpyro.sample(
-                        "a_delta", dist.Normal(a_delta_loc, a_delta_scale)
+                    a_delta_raw = numpyro.sample(
+                        "a_delta_raw", dist.Normal(0., 1.)
+                    )
+                    a_delta = numpyro.deterministic(
+                        "a_delta", a_delta_loc + jnp.multiply(a_delta_raw, a_delta_scale)
                     )
 
                     # Penalty for negative a
@@ -206,132 +213,5 @@ class HierarchicalBayesianModel(GammaModel):
                 numpyro.sample(
                     site.obs,
                     Mixture,
-                    obs=response_obs
-                )
-
-
-class Misc(GammaModel):
-    NAME = "misc"
-
-    def __init__(self, config: Config):
-        super(Misc, self).__init__(config=config)
-
-    def _model(self, intensity, features, response_obs=None):
-        n_data = intensity.shape[0]
-        n_features = np.max(features, axis=0) + 1
-        feature0 = features[..., 0]
-
-        # Hyper Priors
-        a_loc = numpyro.sample("a_loc", dist.TruncatedNormal(150., 100., low=0))
-        a_scale = numpyro.sample("a_scale", dist.HalfNormal(100.))
-
-        b_scale = numpyro.sample("b_scale", dist.HalfNormal(5.))
-
-        L_scale = numpyro.sample("L_scale", dist.HalfNormal(.5))
-        ell_scale = numpyro.sample("ell_scale", dist.HalfNormal(10.))
-        H_scale = numpyro.sample("H_scale", dist.HalfNormal(5.))
-
-        c_1_scale = numpyro.sample("c_1_scale", dist.HalfNormal(5.))
-        c_2_scale = numpyro.sample("c_2_scale", dist.HalfNormal(5.))
-
-        with numpyro.plate(site.n_response, self.n_response):
-            with numpyro.plate(site.n_features[0], n_features[0]):
-                # Priors
-                a = numpyro.sample(
-                    site.a, dist.TruncatedNormal(a_loc, a_scale, low=0)
-                )
-
-                b_raw = numpyro.sample("b_raw", dist.HalfNormal(scale=1))
-                b = numpyro.deterministic(site.b, jnp.multiply(b_scale, b_raw))
-
-                L_raw = numpyro.sample("L_raw", dist.HalfNormal(scale=1))
-                L = numpyro.deterministic(site.L, jnp.multiply(L_scale, L_raw))
-
-                ell_raw = numpyro.sample("ell_raw", dist.HalfNormal(scale=1))
-                ell = numpyro.deterministic(site.ell, jnp.multiply(ell_scale, ell_raw))
-
-                H_raw = numpyro.sample("H_raw", dist.HalfNormal(scale=1))
-                H = numpyro.deterministic(site.H, jnp.multiply(H_scale, H_raw))
-
-                c_1_raw = numpyro.sample("c_1_raw", dist.HalfNormal(scale=1))
-                c_1 = numpyro.deterministic(site.c_1, jnp.multiply(c_1_scale, c_1_raw))
-
-                c_2_raw = numpyro.sample("c_2_raw", dist.HalfNormal(scale=1))
-                c_2 = numpyro.deterministic(site.c_2, jnp.multiply(c_2_scale, c_2_raw))
-
-        ## Pseudo recruitment curve
-        # Hyper Priors
-        a_change_loc = numpyro.sample("a_change_loc", dist.TruncatedNormal(150., 100., low=0))
-        a_change_scale = numpyro.sample("a_change_scale", dist.HalfNormal(100.))
-
-        b_pseudo_scale = numpyro.sample("b_pseudo_scale", dist.HalfNormal(5.))
-
-        ell_pseudo_scale = numpyro.sample("ell_pseudo_scale", dist.HalfNormal(10.))
-        H_pseudo_scale = numpyro.sample("H_pseudo_scale", dist.HalfNormal(5.))
-
-        # c_1_pseudo_scale = numpyro.sample("c_1_pseudo_scale", dist.HalfNormal(5.))
-        # c_2_pseudo_scale = numpyro.sample("c_2_pseudo_scale", dist.HalfNormal(5.))
-
-        with numpyro.plate(site.n_response, self.n_response):
-            with numpyro.plate(site.n_features[0], n_features[0]):
-                # Priors
-                a_change = numpyro.sample(
-                    "a_change", dist.TruncatedNormal(a_change_loc, a_change_scale, low=0)
-                )
-
-                b_pseudo_raw = numpyro.sample("b_pseudo_raw", dist.HalfNormal(scale=1))
-                b_pseudo = numpyro.deterministic("b_pseudo", jnp.multiply(b_pseudo_scale, b_pseudo_raw))
-
-                ell_pseudo_raw = numpyro.sample("ell_pseudo_raw", dist.HalfNormal(scale=1))
-                ell_pseudo = numpyro.deterministic("ell_pseudo", jnp.multiply(ell_pseudo_scale, ell_pseudo_raw))
-
-                H_pseudo_raw = numpyro.sample("H_pseudo_raw", dist.HalfNormal(scale=1))
-                H_pseudo = numpyro.deterministic("H_pseudo", jnp.multiply(H_pseudo_scale, H_pseudo_raw))
-
-                # c_1_pseudo_raw = numpyro.sample("c_1_pseudo_raw", dist.HalfNormal(scale=1))
-                # c_1_pseudo = numpyro.deterministic("c_1_pseudo", jnp.multiply(c_1_pseudo_scale, c_1_pseudo_raw))
-
-                # c_2_pseudo_raw = numpyro.sample("c_2_pseudo_raw", dist.HalfNormal(scale=1))
-                # c_2_pseudo = numpyro.deterministic("c_2_pseudo", jnp.multiply(c_2_pseudo_scale, c_2_pseudo_raw))
-
-        with numpyro.plate(site.n_response, self.n_response):
-            with numpyro.plate(site.n_data, n_data):
-                # Model
-                mu = numpyro.deterministic(
-                    site.mu,
-                    F.rectified_logistic(
-                        x=intensity,
-                        a=a[feature0],
-                        b=b[feature0],
-                        L=L[feature0],
-                        ell=ell[feature0],
-                        H=H[feature0]
-                    )
-                    # + F.rectified_logistic(
-                    #     x=intensity,
-                    #     a=a[feature0] + a_change[feature0],
-                    #     b=b_pseudo[feature0],
-                    #     L=0,
-                    #     ell=ell_pseudo[feature0],
-                    #     H=H_pseudo[feature0]
-                    # )
-                )
-                beta = numpyro.deterministic(
-                    site.beta,
-                    self.rate(
-                        mu,
-                        c_1[feature0],
-                        c_2[feature0]
-                    )
-                )
-                alpha = numpyro.deterministic(
-                    site.alpha,
-                    self.concentration(mu, beta)
-                )
-
-                # Observation
-                numpyro.sample(
-                    site.obs,
-                    dist.Gamma(concentration=alpha, rate=beta),
                     obs=response_obs
                 )

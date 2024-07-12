@@ -5,6 +5,8 @@ import logging
 import numpy as np
 import pandas as pd
 import arviz as az
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from hbmep.config import Config
 from hbmep.model.utils import Site as site
@@ -20,69 +22,27 @@ from constants import (
 
 logger = logging.getLogger(__name__)
 
-BUILD_DIR = os.path.join(BUILD_DIR, "midline_lateral")
-FEATURES = [["participant", "segment"], "laterality"]
+BUILD_DIR = os.path.join(BUILD_DIR, "complete_cases_postition_charge")
+os.makedirs(BUILD_DIR, exist_ok=True)
+setup_logging(
+    dir=BUILD_DIR,
+    fname=os.path.basename(__file__)
+)
 
-BOOL_GROUND = True
-if BOOL_GROUND: BUILD_DIR = os.path.join(BUILD_DIR, "ground")
+COLUMNS = ["participant", "compound_position", "compound_charge_params"]
+FEATURES = ["participant", ["compound_position", "compound_charge_params"]]
+COMPLETE_CASES = [
+    ('C7L-C7M', '20-0-80-25'),
+    ('C7L-C7M', '50-0-50-0'),
+    ('C7L-C7M', '50-0-50-100'),
+    ('C7M-C7L', '20-0-80-25'),
+    ('C7M-C7L', '50-0-50-0'),
+    ('C7M-C7L', '50-0-50-100')
+]
 
 
-def _process_data(df: pd.DataFrame, ground: bool = False) -> pd.DataFrame:
-    if ground: logger.info("Processing ground contacts ...")
-    logger.info(f"Original data shape: {df.shape}")
-
-    df = df.copy()
-    features = ["participant", "compound_position"]
-
-    compound_positions = df[features[1]].unique().tolist()
-    logger.info(f"compound_positions: {compound_positions}")
-
-    filtered_compound_positions = []
-    for cpos in compound_positions:
-        l, r = cpos.split('-')
-        assert r != ""
-
-        if not ground:
-            if not l: continue
-            if l[-1] == "L" and r[-1] == "L":
-                filtered_compound_positions.append(cpos)
-                continue
-            if l[-1] == "M" and r[-1] == "M":
-                filtered_compound_positions.append(cpos)
-                continue
-        else:
-            if l == "": filtered_compound_positions.append(cpos)
-
-    logger.info(f"filtered_compound_positions: {filtered_compound_positions}")
-    ind = df[features[1]].isin(filtered_compound_positions)
-    df = df[ind].reset_index(drop=True).copy()
-    logger.info(f"Filtered data shape: {df.shape}")
-
-    if not ground:
-        assert (df.channel1_laterality == df.channel2_laterality).all()
-        df["segment"] = df.channel1_segment + "-" + df.channel2_segment
-        df["laterality"] = df.channel1_laterality
-    else:
-        df["segment"] = df.channel2_segment
-        df["laterality"] = df.channel2_laterality
-
-    combinations = (
-        df[[features[0], "segment", "laterality"]]
-        .apply(tuple, axis=1)
-        .unique()
-        .tolist()
-    )
-
-    filter_combinations = []
-    for c in combinations:
-        subject, segment, _ = c
-        if (subject, segment, "L") in combinations and (subject, segment, "M") in combinations:
-            filter_combinations.append((subject, segment))
-
-    filter_combinations = set(filter_combinations)
-    filter_combinations = list(filter_combinations)
-
-    ind = df[[features[0], "segment"]].apply(tuple, axis=1).isin(filter_combinations)
+def _process_data(df, keep_combinations):
+    ind = df[COLUMNS[1:]].apply(tuple, axis=1).isin(keep_combinations)
     df = df[ind].reset_index(drop=True).copy()
     return df
 
@@ -90,7 +50,8 @@ def _process_data(df: pd.DataFrame, ground: bool = False) -> pd.DataFrame:
 def main():
     df = pd.read_csv(DATA_PATH)
     logger.info("Processing data ...")
-    df = _process_data(df=df, ground=BOOL_GROUND)
+
+    df = _process_data(df=df, keep_combinations=COMPLETE_CASES)
     logger.info(f"Processed df shape: {df.shape}")
 
     config = Config(toml_path=TOML_PATH)
@@ -99,7 +60,7 @@ def main():
 
     model = HierarchicalBayesianModel(config=config)
     df, encoder_dict = model.load(df=df)
-    # model.plot(df=df, encoder_dict=encoder_dict)
+    model.plot(df=df, encoder_dict=encoder_dict)
 
     # Run inference
     mcmc, posterior_samples_ = model.run_inference(df=df)
@@ -112,7 +73,9 @@ def main():
 
     # Predictions and recruitment curves
     posterior_samples = posterior_samples_.copy()
-    posterior_samples[site.outlier_prob] = 0 * posterior_samples[site.outlier_prob]
+    if site.outlier_prob in posterior_samples:
+        posterior_samples[site.outlier_prob] = 0 * posterior_samples[site.outlier_prob]
+
     prediction_df = model.make_prediction_dataset(df=df)
     posterior_predictive = model.predict(
         df=prediction_df, posterior_samples=posterior_samples
@@ -144,7 +107,6 @@ def main():
     vars_to_exclude += [site.q, site.bg_scale]
     vars_to_exclude = ["~" + var for var in vars_to_exclude]
     logger.info(az.summary(inference_data, var_names=vars_to_exclude).to_string())
-
     return
 
 
