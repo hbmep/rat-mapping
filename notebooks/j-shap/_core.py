@@ -7,12 +7,13 @@ import pandas as pd
 import arviz as az
 import matplotlib.pyplot as plt
 import seaborn as sns
+import jax
 
 from hbmep.config import Config
 from hbmep.model.utils import Site as site
 
 from paper.utils import setup_logging
-from models import HierarchicalBayesianModel
+from models import HierarchicalBayesianModel, SVIHierarchicalBayesianModel
 from constants import (
     TOML_PATH,
     DATA_PATH,
@@ -20,17 +21,16 @@ from constants import (
     INFERENCE_FILE
 )
 
+PLATFORM = "cpu"
+jax.config.update("jax_platforms", PLATFORM)
+
 logger = logging.getLogger(__name__)
 
-BUILD_DIR = os.path.join(BUILD_DIR, "complete_cases_postition_charge")
-os.makedirs(BUILD_DIR, exist_ok=True)
-setup_logging(
-    dir=BUILD_DIR,
-    fname=os.path.basename(__file__)
-)
+BUILD_DIR = os.path.join(BUILD_DIR, "complete_cases")
 
 COLUMNS = ["participant", "compound_position", "compound_charge_params"]
 FEATURES = ["participant", ["compound_position", "compound_charge_params"]]
+
 COMPLETE_CASES = [
     ('C7L-C7M', '20-0-80-25'),
     ('C7L-C7M', '50-0-50-0'),
@@ -50,7 +50,6 @@ def _process_data(df, keep_combinations):
 def main():
     df = pd.read_csv(DATA_PATH)
     logger.info("Processing data ...")
-
     df = _process_data(df=df, keep_combinations=COMPLETE_CASES)
     logger.info(f"Processed df shape: {df.shape}")
 
@@ -58,37 +57,43 @@ def main():
     config.FEATURES = FEATURES
     config.BUILD_DIR = BUILD_DIR
 
-    model = HierarchicalBayesianModel(config=config)
-    df["compound_charge_params"] = (
-        df["compound_charge_params"]
-        .replace({
-                '50-0-50-100': '01_50-0-50-100',
-                '20-0-80-25': '02_20-0-80-25',
-                '50-0-50-0': '03_50-0-50-0',
-        })
-    )
+    # model = HierarchicalBayesianModel(config=config)
+    model = SVIHierarchicalBayesianModel(config=config)
     df, encoder_dict = model.load(df=df)
     # model.plot(df=df, encoder_dict=encoder_dict)
 
+    # # Run inference
+    # mcmc, posterior_samples_ = model.run_inference(df=df)
+
+    # # Save posterior
+    # dest = os.path.join(model.build_dir, INFERENCE_FILE)
+    # with open(dest, "wb") as f:
+    #     pickle.dump((model, mcmc, posterior_samples_,), f)
+    # logger.info(f"Saved inference data to {dest}")
+
     # Run inference
-    mcmc, posterior_samples_ = model.run_inference(df=df)
+    guide, svi_result = model.run_inference(df=df)
+    losses = svi_result.losses
+
+    # Save losses plot
+    fig, axes = plt.subplots(
+        1, 1, figsize=(5, 5), constrained_layout=True, squeeze=False
+    )
+    ax = axes[0, 0]
+    sns.lineplot(x=range(len(losses[-2000:])), y=losses[-2000:], ax=ax)
+    dest = os.path.join(model.build_dir, "losses.png")
+    fig.savefig(dest)
+    logger.info(f"Losses plot saved at {dest}")
 
     # Save posterior
     dest = os.path.join(model.build_dir, INFERENCE_FILE)
     with open(dest, "wb") as f:
-        pickle.dump((model, mcmc, posterior_samples_,), f)
+        pickle.dump((model, svi_result, posterior_samples_,), f)
     logger.info(f"Saved inference data to {dest}")
-
-    dest = os.path.join(model.build_dir, "encoder_dict.pkl")
-    with open(dest, "wb") as f:
-        pickle.dump((df, encoder_dict), f)
-    logger.info(f"Saved encoder dict to {dest}")
 
     # Predictions and recruitment curves
     posterior_samples = posterior_samples_.copy()
-    if site.outlier_prob in posterior_samples:
-        posterior_samples[site.outlier_prob] = 0 * posterior_samples[site.outlier_prob]
-
+    posterior_samples[site.outlier_prob] = 0 * posterior_samples[site.outlier_prob]
     prediction_df = model.make_prediction_dataset(df=df)
     posterior_predictive = model.predict(
         df=prediction_df, posterior_samples=posterior_samples
@@ -107,19 +112,20 @@ def main():
         posterior_predictive=posterior_predictive
     )
 
-    # Model evaluation
-    inference_data = az.from_numpyro(mcmc)
-    logger.info("Evaluating model ...")
-    logger.info("LOO ...")
-    score = az.loo(inference_data, var_name=site.obs)
-    logger.info(score)
-    logger.info("WAIC ...")
-    score = az.waic(inference_data, var_name=site.obs)
-    logger.info(score)
-    vars_to_exclude = [site.mu, site.alpha, site.beta, site.obs]
-    vars_to_exclude += [site.q, site.bg_scale]
-    vars_to_exclude = ["~" + var for var in vars_to_exclude]
-    logger.info(az.summary(inference_data, var_names=vars_to_exclude).to_string())
+    # # Model evaluation
+    # inference_data = az.from_numpyro(mcmc)
+    # logger.info("Evaluating model ...")
+    # logger.info("LOO ...")
+    # score = az.loo(inference_data, var_name=site.obs)
+    # logger.info(score)
+    # logger.info("WAIC ...")
+    # score = az.waic(inference_data, var_name=site.obs)
+    # logger.info(score)
+    # vars_to_exclude = [site.mu, site.alpha, site.beta, site.obs]
+    # vars_to_exclude += [site.q, site.bg_scale]
+    # vars_to_exclude = ["~" + var for var in vars_to_exclude]
+    # logger.info(az.summary(inference_data, var_names=vars_to_exclude).to_string())
+
     return
 
 
