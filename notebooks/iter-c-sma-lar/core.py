@@ -34,14 +34,14 @@ def main(build_dir):
     def run_inference(
         subject,
         position,
-        charge,
+        size,
         response,
         M
     ):
         # Required for build directory
         subject_dir = f"sub__{subject}"
         position_dir = f"pos__{position}"
-        charge_dir = f"size__{charge}"
+        size_dir = f"size__{size}"
         response_dir = f"resp__{response}"
 
         # Build model
@@ -50,7 +50,7 @@ def main(build_dir):
             build_dir,
             subject_dir,
             position_dir,
-            charge_dir,
+            size_dir,
             response_dir,
             M.NAME
         )
@@ -68,7 +68,7 @@ def main(build_dir):
         ind = (
             (data[model.features[0]] == subject) &
             (data[model.features[1]] == position) &
-            (data[model.features[2]] == charge)
+            (data[model.features[2]] == size)
         )
         df = data[ind].reset_index(drop=True).copy()
 

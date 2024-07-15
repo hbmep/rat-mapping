@@ -34,14 +34,12 @@ def main(build_dir):
     def run_inference(
         subject,
         position,
-        charge,
         response,
         M
     ):
         # Required for build directory
         subject_dir = f"sub__{subject}"
         position_dir = f"pos__{position}"
-        charge_dir = f"size__{charge}"
         response_dir = f"resp__{response}"
 
         # Build model
@@ -50,7 +48,6 @@ def main(build_dir):
             build_dir,
             subject_dir,
             position_dir,
-            charge_dir,
             response_dir,
             M.NAME
         )
@@ -67,8 +64,7 @@ def main(build_dir):
         # Load data
         ind = (
             (data[model.features[0]] == subject) &
-            (data[model.features[1]] == position) &
-            (data[model.features[2]] == charge)
+            (data[model.features[1]] == position)
         )
         df = data[ind].reset_index(drop=True).copy()
 
@@ -120,7 +116,7 @@ def main(build_dir):
     with Parallel(n_jobs=n_jobs) as parallel:
         parallel(
             delayed(run_inference)(
-                c[0], c[1], c[2], response, M
+                c[0], c[1], response, M
             )
             for c in combinations
             for response in config.RESPONSE
