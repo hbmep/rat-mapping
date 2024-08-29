@@ -1,20 +1,19 @@
 import numpy as np
+import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
 from hbmep.config import Config
 from hbmep.nn import functional as F
 from hbmep.model import GammaModel
-from hbmep.model.non_hierarchical import NonHierarchicalBaseModel
 from hbmep.model.utils import Site as site
 
 
-class NonHierarchicalBayesianModel(NonHierarchicalBaseModel, GammaModel):
+class NonHierarchicalBayesianModel(GammaModel):
     NAME = "non_hierarchical_bayesian_model"
 
     def __init__(self, config: Config):
         super(NonHierarchicalBayesianModel, self).__init__(config=config)
-        self.n_jobs = -1
 
     def _model(self, intensity, features, response_obs=None):
         n_data = intensity.shape[0]
@@ -45,14 +44,23 @@ class NonHierarchicalBayesianModel(NonHierarchicalBaseModel, GammaModel):
                             site.a, dist.TruncatedNormal(a_loc, a_scale, low=0)
                         )
 
-                        b = numpyro.sample(site.b, dist.HalfNormal(scale=b_scale))
+                        b_raw = numpyro.sample("b_raw", dist.HalfNormal(scale=1))
+                        b = numpyro.deterministic(site.b, jnp.multiply(b_scale, b_raw))
 
-                        L = numpyro.sample(site.L, dist.HalfNormal(scale=L_scale))
-                        ell = numpyro.sample(site.ell, dist.HalfNormal(scale=ell_scale))
-                        H = numpyro.sample(site.H, dist.HalfNormal(scale=H_scale))
+                        L_raw = numpyro.sample("L_raw", dist.HalfNormal(scale=1))
+                        L = numpyro.deterministic(site.L, jnp.multiply(L_scale, L_raw))
 
-                        c_1 = numpyro.sample(site.c_1, dist.HalfNormal(scale=c_1_scale))
-                        c_2 = numpyro.sample(site.c_2, dist.HalfNormal(scale=c_2_scale))
+                        ell_raw = numpyro.sample("ell_raw", dist.HalfNormal(scale=1))
+                        ell = numpyro.deterministic(site.ell, jnp.multiply(ell_scale, ell_raw))
+
+                        H_raw = numpyro.sample("H_raw", dist.HalfNormal(scale=1))
+                        H = numpyro.deterministic(site.H, jnp.multiply(H_scale, H_raw))
+
+                        c_1_raw = numpyro.sample("c_1_raw", dist.HalfNormal(scale=1))
+                        c_1 = numpyro.deterministic(site.c_1, jnp.multiply(c_1_scale, c_1_raw))
+
+                        c_2_raw = numpyro.sample("c_2_raw", dist.HalfNormal(scale=1))
+                        c_2 = numpyro.deterministic(site.c_2, jnp.multiply(c_2_scale, c_2_raw))
 
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate(site.n_data, n_data):
