@@ -1,0 +1,17 @@
+[paths]
+csv_path = ""
+build_directory = ""
+
+[variables]
+intensity = "pulse_amplitude"
+features = ["participant", "compound_position", "compound_size"]
+response = ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
+
+[mcmc]
+num_chains = 4
+num_warmup = 5000
+num_samples = 1000
+thinning = 1
+
+[misc]
+base = 20
