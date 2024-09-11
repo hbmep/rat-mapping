@@ -15,7 +15,8 @@ from constants import (
     TOML_PATH,
     DATA_PATH,
     BUILD_DIR,
-    INFERENCE_FILE
+    INFERENCE_FILE,
+    RBICEPS_FILE
 )
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @timing
 def main(M):
     src = DATA_PATH
+
     data = pd.read_csv(src)
 
     config = Config(toml_path=TOML_PATH)
@@ -64,7 +66,7 @@ def main(M):
     )
 
     # Save
-    src = os.path.join(model.build_dir, INFERENCE_FILE)
+    src = os.path.join(model.build_dir, RBICEPS_FILE)
     with open(src, "wb") as f:
         pickle.dump((df, encoder_dict, model, posterior_samples,), f)
 
