@@ -3,7 +3,7 @@ import numpyro
 import numpyro.distributions as dist
 
 from hbmep.config import Config
-from hbmep.nn import functional as F
+from hbmep import functional as F
 from hbmep.model import GammaModel
 from hbmep.model.non_hierarchical import NonHierarchicalBaseModel
 from hbmep.model.utils import Site as site
@@ -25,32 +25,18 @@ class NonHierarchicalBayesianModel(NonHierarchicalBaseModel, GammaModel):
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate(site.n_features[1], n_features[1]):
                 with numpyro.plate(site.n_features[0], n_features[0]):
-                    # Hyper Priors
-                    a_loc = numpyro.sample("a_loc", dist.TruncatedNormal(150., 100., low=0))
-                    a_scale = numpyro.sample("a_scale", dist.HalfNormal(100.))
-
-                    b_scale = numpyro.sample("b_scale", dist.HalfNormal(5.))
-
-                    L_scale = numpyro.sample("L_scale", dist.HalfNormal(.5))
-                    ell_scale = numpyro.sample("ell_scale", dist.HalfNormal(10.))
-                    H_scale = numpyro.sample("H_scale", dist.HalfNormal(5.))
-
-                    c_1_scale = numpyro.sample("c_1_scale", dist.HalfNormal(5.))
-                    c_2_scale = numpyro.sample("c_2_scale", dist.HalfNormal(5.))
-
                     # Priors
                     a = numpyro.sample(
-                        site.a, dist.TruncatedNormal(a_loc, a_scale, low=0)
+                        site.a, dist.TruncatedNormal(150., 100., low=0)
                     )
+                    b = numpyro.sample(site.b, dist.HalfNormal(scale=1.))
 
-                    b = numpyro.sample(site.b, dist.HalfNormal(scale=b_scale))
+                    L = numpyro.sample(site.L, dist.HalfNormal(scale=.1))
+                    ell = numpyro.sample(site.ell, dist.HalfNormal(scale=1.))
+                    H = numpyro.sample(site.H, dist.HalfNormal(scale=5.))
 
-                    L = numpyro.sample(site.L, dist.HalfNormal(scale=L_scale))
-                    ell = numpyro.sample(site.ell, dist.HalfNormal(scale=ell_scale))
-                    H = numpyro.sample(site.H, dist.HalfNormal(scale=H_scale))
-
-                    c_1 = numpyro.sample(site.c_1, dist.HalfNormal(scale=c_1_scale))
-                    c_2 = numpyro.sample(site.c_2, dist.HalfNormal(scale=c_2_scale))
+                    c_1 = numpyro.sample(site.c_1, dist.HalfNormal(scale=5.))
+                    c_2 = numpyro.sample(site.c_2, dist.HalfNormal(scale=.5))
 
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate(site.n_data, n_data):

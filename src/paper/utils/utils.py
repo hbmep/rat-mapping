@@ -112,4 +112,3 @@ def load_rat_data(
 
     df = df.rename(columns=muscles_map).copy()
     return df, mat, time, auc_window, muscles_map
-

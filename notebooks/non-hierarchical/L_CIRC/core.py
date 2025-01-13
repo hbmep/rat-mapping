@@ -42,7 +42,7 @@ def main(M):
 
     # Run inference
     df, encoder_dict = model.load(df=data)
-    _, posterior_samples = model.run_inference(df=df)
+    _, posterior_samples = model.run(df=df)
 
     # Predictions and recruitment curves
     prediction_df = model.make_prediction_dataset(df=df)
