@@ -20,22 +20,32 @@ from constants import (
 )
 
 logger = logging.getLogger(__name__)
+VERTICES = [
+    '-C6LE', '-C6LN', '-C6LNE', '-C6LNW',
+    '-C6LS', '-C6LSE', '-C6LSW', '-C6LW'
+]
+DIAM = [
+    'C6LE-C6LW', 'C6LNE-C6LSW', 'C6LS-C6LN', 'C6LSE-C6LNW'
+]
+RADII = [
+    'C6LE-C6LC', 'C6LN-C6LC', 'C6LNE-C6LC', 'C6LNW-C6LC',
+    'C6LS-C6LC', 'C6LSE-C6LC', 'C6LSW-C6LC', 'C6LW-C6LC',
+]
 
 
 @timing
-def main(M):
+def main(M, run_id):
+    assert run_id in {"diam", "radii", "vertices", "all"}
     src = DATA_PATH
     data = pd.read_csv(src)
 
     config = Config(toml_path=TOML_PATH)
     config.BASE = 1
-    config.RESPONSE = [config.RESPONSE[1], config.RESPONSE[2], config.RESPONSE[4]]
-
     model = M(config=config)
     model.build_dir = os.path.join(
         BUILD_DIR,
         model.NAME,
-        "diam"
+        run_id
     )
 
     # Logging
@@ -48,23 +58,16 @@ def main(M):
     ind = data[model.intensity] > 0
     df = data[ind].reset_index(drop=True).copy()
 
-    vertices = [
-        '-C6LE', '-C6LN', '-C6LNE', '-C6LNW',
-        '-C6LS', '-C6LSE', '-C6LSW', '-C6LW'
-    ]
-    diam = [
-        'C6LE-C6LW', 'C6LNE-C6LSW', 'C6LS-C6LN', 'C6LSE-C6LNW'
-    ]
-    radii = [
-        'C6LE-C6LC', 'C6LN-C6LC', 'C6LNE-C6LC', 'C6LNW-C6LC',
-        'C6LS-C6LC', 'C6LSE-C6LC', 'C6LSW-C6LC', 'C6LW-C6LC',
-    ]
-    subset = ['-C6LC'] + diam
-    ind = df[model.features[1]].isin(subset)
-    df = df[ind].reset_index(drop=True).copy()
+    # subset = ['amap01', 'amap02']
+    # ind = df[model.features[0]].isin(subset)
+    # df = df[ind].reset_index(drop=True).copy()
 
-    subset = ['amap01', 'amap02']
-    ind = df[model.features[0]].isin(subset)
+    subset = ['-C6LC']
+    if run_id == "diam": subset += DIAM
+    if run_id == "radii": subset += RADII
+    if run_id == "vertices": subset += VERTICES
+    if run_id == "all": subset += DIAM + RADII + VERTICES
+    ind = df[model.features[1]].isin(subset)
     df = df[ind].reset_index(drop=True).copy()
 
     # Run inference
@@ -72,7 +75,7 @@ def main(M):
     df[model.intensity] = np.log(df[model.intensity])
     logger.info(f"df.shape {df.shape}")
     logger.info(
-        f"Running {M.NAME} with response {config.RESPONSE} ..."
+        f"Running {model.NAME} with {run_id} - {subset} ..."
     )
     _, posterior_samples = model.run(df=df, **model.run_kwargs)
 
@@ -107,12 +110,13 @@ def main(M):
         pickle.dump((df, encoder_dict, model, posterior_samples,), f)
 
     logger.info(
-        f"Finished running {model.NAME} with response {config.RESPONSE}"
+        f"Finished running {model.NAME} with {run_id} - {subset}"
     )
     logger.info(f"Saved results to {model.build_dir}")
     return
 
 
 if __name__ == "__main__":
+    run_id = sys.argv[1:][0]
     M = HBe
-    main(M=M)
+    main(M=M, run_id=run_id)

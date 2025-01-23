@@ -143,14 +143,15 @@ class HBe(GammaModel):
 
     def __init__(self, config: Config):
         super(HBe, self).__init__(config=config)
+        self.use_mixture = False
         self.mcmc_params = {
-            # "num_warmup": 4000,
-            # "num_samples": 4000,
-            "num_warmup": 200,
-            "num_samples": 200,
+            "num_warmup": 4000,
+            "num_samples": 4000,
+            # "num_warmup": 2000,
+            # "num_samples": 2000,
             "num_chains": 4,
-            # "thinning": 4,
-            "thinning": 1,
+            "thinning": 4,
+            # "thinning": 2,
         }
         self.run_kwargs = {
             "max_tree_depth": (20, 20),
@@ -168,6 +169,7 @@ class HBe(GammaModel):
             f'_{self.mcmc_params["thinning"]}T'
             f'_{self.run_kwargs["max_tree_depth"][0]}D'
             f'_{self.run_kwargs["target_accept_prob"]}A'
+            f'_mixture{"True" if self.use_mixture else "False"}'
         )
 
     def _model(self, intensity, features, response_obs=None):
@@ -247,8 +249,9 @@ class HBe(GammaModel):
                     c_2_raw = numpyro.sample("c_2_raw", dist.HalfNormal(scale=1))
                     c_2 = numpyro.deterministic(site.c_2, jnp.multiply(c_2_scale, c_2_raw))
 
-        # # Outlier Distribution
-        # q = numpyro.sample(site.outlier_prob, dist.Uniform(0., 0.01))
+        if self.use_mixture:
+            # Outlier Distribuion
+            q = numpyro.sample(site.outlier_prob, dist.Uniform(0., 0.01))
 
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate(site.n_data, n_data):
@@ -278,23 +281,26 @@ class HBe(GammaModel):
                     self.concentration(mu, beta)
                 )
 
-                # # Mixture
-                # mixing_distribution = dist.Categorical(
-                #     probs=jnp.stack([1 - q, q], axis=-1)
-                # )
-                # component_distributions=[
-                #     dist.Gamma(concentration=alpha, rate=beta),
-                #     dist.HalfNormal(scale=L[feature0, feature1] + H[feature0, feature1])
-                # ]
-                # Mixture = dist.MixtureGeneral(
-                #     mixing_distribution=mixing_distribution,
-                #     component_distributions=component_distributions
-                # )
+                if self.use_mixture:
+                    # Mixture
+                    mixing_distribution = dist.Categorical(
+                        probs=jnp.stack([1 - q, q], axis=-1)
+                    )
+                    component_distributions=[
+                        dist.Gamma(concentration=alpha, rate=beta),
+                        dist.HalfNormal(scale=L[feature0, feature1] + H[feature0, feature1])
+                    ]
+                    Mixture = dist.MixtureGeneral(
+                        mixing_distribution=mixing_distribution,
+                        component_distributions=component_distributions
+                    )
 
                 # Observation
                 numpyro.sample(
                     site.obs,
-                    dist.Gamma(concentration=alpha, rate=beta),
-                    # Mixture,
+                    (
+                        Mixture if self.use_mixture
+                        else dist.Gamma(concentration=alpha, rate=beta)
+                    ),
                     obs=response_obs
                 )
