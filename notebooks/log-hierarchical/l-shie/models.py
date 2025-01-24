@@ -1,5 +1,4 @@
 import numpy as np
-import jax
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
@@ -20,14 +19,14 @@ class HierarchicalBayesianModel(GammaModel):
         super(HierarchicalBayesianModel, self).__init__(config=config)
         self.use_mixture = True
         self.mcmc_params = {
-            # "num_warmup": 4000,
-            # "num_samples": 4000,
-            # "num_chains": 4,
-            # "thinning": 4,
-            "num_warmup": 200,
-            "num_samples": 200,
+            "num_warmup": 4000,
+            "num_samples": 4000,
             "num_chains": 4,
-            "thinning": 1,
+            "thinning": 4,
+            # "num_warmup": 200,
+            # "num_samples": 200,
+            # "num_chains": 4,
+            # "thinning": 1,
         }
         self.run_kwargs = {
             "max_tree_depth": (20, 20),
@@ -147,7 +146,7 @@ class HierarchicalBayesianModel(GammaModel):
                     site.obs,
                     (
                         Mixture if self.use_mixture
-                        else dist.Gamma(concentration=alpha, rate=beta),
+                        else dist.Gamma(concentration=alpha, rate=beta)
                     ),
                     obs=response_obs
                 )
