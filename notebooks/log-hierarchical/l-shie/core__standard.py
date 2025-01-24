@@ -16,20 +16,12 @@ from constants import (
     TOML_PATH,
     DATA_PATH,
     BUILD_DIR,
-    INFERENCE_FILE
+    INFERENCE_FILE,
+    POSITIONS_MAP,
+    CHARGES_MAP
 )
 
 logger = logging.getLogger(__name__)
-POSITIONS_MAP = {
-    "-C6LC": "-C",
-    "C6LC-": "C-",
-    "C6LC-C6LX": "C-X",
-    "C6LX-C6LC": "X-C",
-}
-CHARGES_MAP = {
-    "50-0-50-100": "Biphasic",
-    "20-0-80-25": "Pseudo-Mono"
-}
 
 
 @timing
