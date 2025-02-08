@@ -9,14 +9,17 @@ from hbmep.config import Config
 from hbmep.utils import timing
 
 from paper.utils import setup_logging
-from models import (
-    HierarchicalBayesianModel,
-)
+from models import HB
 from constants import (
     TOML_PATH,
     DATA_PATH,
     BUILD_DIR,
-    INFERENCE_FILE
+    INFERENCE_FILE,
+    MODEL_FILE,
+    MAP,
+    VERTICES,
+    DIAM,
+    RADII
 )
 
 logger = logging.getLogger(__name__)
@@ -24,16 +27,13 @@ logger = logging.getLogger(__name__)
 
 @timing
 def main(M, response_ind):
-    src = DATA_PATH
-    data = pd.read_csv(src)
-
     config = Config(toml_path=TOML_PATH)
     config.BASE = 1
-
     if response_ind != -1:
         config.RESPONSE = [config.RESPONSE[response_ind]]
 
     model = M(config=config)
+    model.NAME = model.NAME + f"__{model.subname}"
     model.build_dir = os.path.join(
         BUILD_DIR,
         model.NAME,
@@ -47,22 +47,25 @@ def main(M, response_ind):
         fname=os.path.basename(__file__)
     )
 
+    src = DATA_PATH
+    data = pd.read_csv(src)
     ind = data[model.intensity] > 0
-    data = data[ind].reset_index(drop=True).copy()
+    df = data[ind].reset_index(drop=True).copy()
+    df[model.features[1]] = df[model.features[1]].replace(MAP)
     df, encoder_dict = model.load(df=data)
     df[model.intensity] = np.log(df[model.intensity])
 
-    # Run inference
-    # ind = df[model.features[0]] < 2
-    # df = df[ind].reset_index(drop=True).copy()
-    # ind = df[model.features[1]] < 2
-    # df = df[ind].reset_index(drop=True).copy()
+    # run inference
+    ind = df[model.features[0]] < 2
+    df = df[ind].reset_index(drop=True).copy()
+    ind = df[model.features[1]] < 2
+    df = df[ind].reset_index(drop=True).copy()
 
     logger.info(f"df.shape {df.shape}")
     logger.info(
-        f"Running {M.NAME} with response {response_ind} - {config.RESPONSE}"
+        f"Running {M.NAME} with response {response_ind} - {model.response}"
     )
-    _, posterior_samples = model.run(df=df, **model.run_kwargs)
+    mcmc, posterior_samples = model.run(df=df, **model.run_kwargs)
 
     # Predictions and recruitment curves
     prediction_df = model.make_prediction_dataset(df=df)
@@ -92,17 +95,20 @@ def main(M, response_ind):
     # Save
     src = os.path.join(model.build_dir, INFERENCE_FILE)
     with open(src, "wb") as f:
-        pickle.dump((df, encoder_dict, model, posterior_samples,), f)
+        pickle.dump((df, encoder_dict, mcmc, posterior_samples,), f)
 
-    logger.info(
-        f"Finished running {model.NAME} with response {response_ind}, {config.RESPONSE[0]}"
-    )
+    src = os.path.join(model.build_dir, MODEL_FILE)
+    with open(src, "wb") as f:
+        pickle.dump((model,), f)
+
+    logger.info(f"Finished running {model.NAME}")
     logger.info(f"Saved results to {model.build_dir}")
     return
 
 
 if __name__ == "__main__":
     response_ind, = list(map(int, sys.argv[1:]))
-    # response_ind = 0
-    M = HierarchicalBayesianModel
+    # response_ind = -1
+    M = HB
     main(M=M, response_ind=response_ind)
+
