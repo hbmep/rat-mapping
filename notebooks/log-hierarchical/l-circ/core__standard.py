@@ -52,14 +52,14 @@ def main(M, response_ind):
     ind = data[model.intensity] > 0
     df = data[ind].reset_index(drop=True).copy()
     df[model.features[1]] = df[model.features[1]].replace(MAP)
-    df, encoder_dict = model.load(df=data)
+    df, encoder_dict = model.load(df=df)
     df[model.intensity] = np.log(df[model.intensity])
 
-    # run inference
-    ind = df[model.features[0]] < 2
-    df = df[ind].reset_index(drop=True).copy()
-    ind = df[model.features[1]] < 2
-    df = df[ind].reset_index(drop=True).copy()
+    # # run inference
+    # ind = df[model.features[0]] < 2
+    # df = df[ind].reset_index(drop=True).copy()
+    # ind = df[model.features[1]] < 2
+    # df = df[ind].reset_index(drop=True).copy()
 
     logger.info(f"df.shape {df.shape}")
     logger.info(
