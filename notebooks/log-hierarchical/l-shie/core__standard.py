@@ -9,14 +9,13 @@ from hbmep.config import Config
 from hbmep.utils import timing
 
 from paper.utils import setup_logging
-from models import (
-    HierarchicalBayesianModel,
-)
+from models import HB
 from constants import (
     TOML_PATH,
     DATA_PATH,
     BUILD_DIR,
     INFERENCE_FILE,
+    MODEL_FILE,
     POSITIONS_MAP,
     CHARGES_MAP
 )
@@ -26,23 +25,18 @@ logger = logging.getLogger(__name__)
 
 @timing
 def main(M, response_ind):
-    src = DATA_PATH
-    data = pd.read_csv(src)
-
     config = Config(toml_path=TOML_PATH)
     config.BASE = 1
-
     if response_ind != -1:
         config.RESPONSE = [config.RESPONSE[response_ind]]
 
     model = M(config=config)
+    model.NAME = model.NAME + f"__{model.subname}"
     model.build_dir = os.path.join(
         BUILD_DIR,
         model.NAME,
         f"response_{response_ind}"
     )
-    data[model.features[1]] = data[model.features[1]].replace(POSITIONS_MAP)
-    data[model.features[2]] = data[model.features[2]].replace(CHARGES_MAP)
 
     # Logging
     os.makedirs(model.build_dir, exist_ok=True)
@@ -51,9 +45,13 @@ def main(M, response_ind):
         fname=os.path.basename(__file__)
     )
 
+    src = DATA_PATH
+    data = pd.read_csv(src)
     ind = data[model.intensity] > 0
-    data = data[ind].reset_index(drop=True).copy()
-    df, encoder_dict = model.load(df=data)
+    df = data[ind].reset_index(drop=True).copy()
+    df[model.features[1]] = df[model.features[1]].replace(POSITIONS_MAP)
+    df[model.features[2]] = df[model.features[2]].replace(CHARGES_MAP)
+    df, encoder_dict = model.load(df=df)
     df[model.intensity] = np.log(df[model.intensity])
 
     # # Run inference
@@ -63,10 +61,8 @@ def main(M, response_ind):
     # df = df[ind].reset_index(drop=True).copy()
 
     logger.info(f"df.shape {df.shape}")
-    logger.info(
-        f"Running {M.NAME} with response {response_ind} - {config.RESPONSE}"
-    )
-    _, posterior_samples = model.run(df=df, **model.run_kwargs)
+    logger.info(f"Running {M.NAME} with response {response_ind} - {config.RESPONSE}")
+    mcmc, posterior_samples = model.run(df=df, **model.run_kwargs)
 
     # Predictions and recruitment curves
     prediction_df = model.make_prediction_dataset(df=df)
@@ -96,16 +92,19 @@ def main(M, response_ind):
     # Save
     src = os.path.join(model.build_dir, INFERENCE_FILE)
     with open(src, "wb") as f:
-        pickle.dump((df, encoder_dict, model, posterior_samples,), f)
+        pickle.dump((df, encoder_dict, mcmc, posterior_samples,), f)
 
-    logger.info(
-        f"Finished running {model.NAME} with response {response_ind}, {config.RESPONSE[0]}"
-    )
+    src = os.path.join(model.build_dir, MODEL_FILE)
+    with open(src, "wb") as f:
+        pickle.dump((model,), f)
+
+    logger.info(f"Finished running {model.NAME}")
     logger.info(f"Saved results to {model.build_dir}")
     return
 
 
 if __name__ == "__main__":
     response_ind, = list(map(int, sys.argv[1:]))
-    M = HierarchicalBayesianModel
+    M = HB
     main(M=M, response_ind=response_ind)
+

@@ -1,44 +1,49 @@
 import numpy as np
+import jax
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
 from hbmep.config import Config
 from hbmep import functional as F
-from hbmep import smooth_functional as S
+from hbmep import smooth_functional as SF
 from hbmep.model import GammaModel
 from hbmep.model.utils import Site as site
 
 EPS = 1e-3
 
 
-class HierarchicalBayesianModel(GammaModel):
-    NAME = "hierarchical_bayesian"
+class HB(GammaModel):
+    NAME = "hb"
 
     def __init__(self, config: Config):
-        super(HierarchicalBayesianModel, self).__init__(config=config)
+        super(HB, self).__init__(config=config)
         self.use_mixture = True
         self.mcmc_params = {
             "num_warmup": 4000,
             "num_samples": 4000,
-            "num_chains": 4,
             "thinning": 4,
-            # "num_warmup": 200,
-            # "num_samples": 200,
-            # "num_chains": 4,
+            # "num_warmup": 400,
+            # "num_samples": 400,
             # "thinning": 1,
+            "num_chains": 4,
         }
         self.run_kwargs = {
             "max_tree_depth": (20, 20),
             "target_accept_prob": .95,
+            # "max_tree_depth": (10, 10),
+            # "target_accept_prob": .95,
             "extra_fields": [
                 "potential_energy",
                 "num_steps",
                 "accept_prob",
             ]
         }
-        self.NAME += (
-            f'_{self.mcmc_params["num_warmup"]}W'
+
+    @property
+    def subname(self):
+        return (
+            f'{self.mcmc_params["num_warmup"]}W'
             f'_{self.mcmc_params["num_samples"]}S'
             f'_{self.mcmc_params["num_chains"]}C'
             f'_{self.mcmc_params["thinning"]}T'
@@ -58,7 +63,7 @@ class HierarchicalBayesianModel(GammaModel):
         a_loc = numpyro.sample("a_loc", dist.Normal(3., 5.,))
         a_scale = numpyro.sample("a_scale", dist.HalfNormal(5.))
 
-        b_scale = numpyro.sample("b_scale", dist.HalfNormal(5.))
+        b_scale = numpyro.sample("b_scale", dist.HalfNormal(10.))
         L_scale = numpyro.sample("L_scale", dist.HalfNormal(.1))
         ell_scale = numpyro.sample("ell_scale", dist.HalfNormal(1.))
         H_scale = numpyro.sample("H_scale", dist.HalfNormal(5.))
@@ -101,7 +106,7 @@ class HierarchicalBayesianModel(GammaModel):
                 # Model
                 mu = numpyro.deterministic(
                     site.mu,
-                    S.rectified_logistic(
+                    SF.rectified_logistic(
                         x=intensity,
                         a=a[feature0, feature1, feature2],
                         b=b[feature0, feature1, feature2],
@@ -153,23 +158,27 @@ class HierarchicalBayesianModel(GammaModel):
 
 
 class HBe(GammaModel):
-    NAME = "estimation"
+    NAME = "hbe"
 
     def __init__(self, config: Config):
         super(HBe, self).__init__(config=config)
         self.use_mixture = False
         self.mcmc_params = {
-            "num_warmup": 4000,
-            "num_samples": 4000,
-            "num_chains": 4,
-            "thinning": 4,
-            # "num_warmup": 200,
-            # "num_samples": 200,
-            # "num_chains": 4,
+            # "num_warmup": 4000,
+            # "num_samples": 4000,
+            # "thinning": 4,
+            # "num_warmup": 1000,
+            # "num_samples": 1000,
             # "thinning": 1,
+            "num_warmup": 400,
+            "num_samples": 400,
+            "thinning": 1,
+            "num_chains": 4,
         }
         self.run_kwargs = {
-            "max_tree_depth": (20, 20),
+            # "max_tree_depth": (20, 20),
+            # "target_accept_prob": .95,
+            "max_tree_depth": (10, 10),
             "target_accept_prob": .95,
             "extra_fields": [
                 "potential_energy",
@@ -177,8 +186,11 @@ class HBe(GammaModel):
                 "accept_prob",
             ]
         }
-        self.NAME += (
-            f'_{self.mcmc_params["num_warmup"]}W'
+
+    @property
+    def subname(self):
+        return (
+            f'{self.mcmc_params["num_warmup"]}W'
             f'_{self.mcmc_params["num_samples"]}S'
             f'_{self.mcmc_params["num_chains"]}C'
             f'_{self.mcmc_params["thinning"]}T'
@@ -187,7 +199,8 @@ class HBe(GammaModel):
             f'_mixture{"True" if self.use_mixture else "False"}'
         )
 
-    def _model(self, intensity, features, response_obs=None):
+
+    def mvn_reference(self, intensity, features, response_obs=None):
         n_data = intensity.shape[0]
         n_features = np.max(features, axis=0) + 1
         feature0 = features[..., 0]
@@ -196,40 +209,34 @@ class HBe(GammaModel):
         n_fixed = 1
         n_delta = n_features[1] - 1
 
-        # # Fixed
-        # a_fixed_loc = numpyro.sample("a_fixed_loc", dist.Normal(3., 5.))
-        # a_fixed_scale = numpyro.sample("a_fixed_scale", dist.HalfNormal(5.))
-
+        # Fixed
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate("n_fixed", n_fixed):
                 with numpyro.plate(site.n_features[0], n_features[0]):
                     a_fixed = numpyro.sample("a_fixed", dist.Normal(3., 5.))
-                    # a_fixed_raw = numpyro.sample(
-                    #     "a_fixed_raw", dist.Normal(0., 1.)
-                    # )
-                    # a_fixed = numpyro.deterministic(
-                    #     "a_fixed", a_fixed_loc + (a_fixed_scale * a_fixed_raw)
-                    # )
 
         # Delta
         with numpyro.plate("n_delta", n_delta):
             a_delta_loc = numpyro.sample("a_delta_loc", dist.Normal(0., 5.))
             a_delta_scale = numpyro.sample("a_delta_scale", dist.HalfNormal(5.))
+            Rho = numpyro.sample("Rho", dist.LKJ(self.n_response, 1.))
 
-            with numpyro.plate(site.n_response, self.n_response):
-                with numpyro.plate(site.n_features[0], n_features[0]):
-                    a_delta_raw = numpyro.sample("a_delta_raw", dist.Normal(0., 1.))
-                    a_delta = numpyro.deterministic(
-                        "a_delta", a_delta_loc + (a_delta_scale * a_delta_raw)
+            with numpyro.plate(site.n_features[0], n_features[0]):
+                a_delta_raw = numpyro.sample(
+                    "a_delta_raw",
+                    dist.MultivariateNormal(
+                        0, (a_delta_scale[:, None, None] @ a_delta_scale[:, None, None]) * Rho
                     )
+                )
+                a_delta = numpyro.deterministic("a_delta", a_delta_loc[:, None] + a_delta_raw)
 
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate("n_delta", n_delta):
                 with numpyro.plate(site.n_features[0], n_features[0]):
-                    a_fixed_plus_delta = a_fixed + jnp.swapaxes(a_delta, -1, -2)
+                    a_fixed_plus_delta = a_fixed + a_delta
 
         # Hyper-priors
-        b_scale = numpyro.sample("b_scale", dist.HalfNormal(5.))
+        b_scale = numpyro.sample("b_scale", dist.HalfNormal(10.))
         L_scale = numpyro.sample("L_scale", dist.HalfNormal(.1))
         ell_scale = numpyro.sample("ell_scale", dist.HalfNormal(1.))
         H_scale = numpyro.sample("H_scale", dist.HalfNormal(5.))
@@ -273,7 +280,7 @@ class HBe(GammaModel):
                 # Model
                 mu = numpyro.deterministic(
                     site.mu,
-                    S.rectified_logistic(
+                    SF.rectified_logistic(
                         x=intensity,
                         a=a[feature0, feature1],
                         b=b[feature0, feature1],
@@ -319,3 +326,4 @@ class HBe(GammaModel):
                     ),
                     obs=response_obs
                 )
+

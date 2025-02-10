@@ -9,6 +9,7 @@ DATA_PATH = f"/home/{USER}/data/hbmep-processed/rat/{EXPERIMENT}/data.csv"
 MEP_MATRIX_PATH = f"/home/{USER}/data/hbmep-processed/rat/{EXPERIMENT}/mat.npy"
 
 INFERENCE_FILE = "inference.pkl"
+MODEL_FILE = "model.pkl"
 
 BUILD_DIR = f"/home/{USER}/repos/rat-mapping-paper/reports/log-hierarchical/{EXPERIMENT}"
 
