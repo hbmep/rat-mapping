@@ -164,22 +164,22 @@ class HBe(GammaModel):
         super(HBe, self).__init__(config=config)
         self.use_mixture = False
         self.mcmc_params = {
-            # "num_warmup": 4000,
-            # "num_samples": 4000,
-            # "thinning": 4,
+            "num_warmup": 4000,
+            "num_samples": 4000,
+            "thinning": 4,
             # "num_warmup": 1000,
             # "num_samples": 1000,
             # "thinning": 1,
-            "num_warmup": 400,
-            "num_samples": 400,
-            "thinning": 1,
+            # "num_warmup": 400,
+            # "num_samples": 400,
+            # "thinning": 1,
             "num_chains": 4,
         }
         self.run_kwargs = {
-            # "max_tree_depth": (20, 20),
-            # "target_accept_prob": .95,
-            "max_tree_depth": (10, 10),
+            "max_tree_depth": (20, 20),
             "target_accept_prob": .95,
+            # "max_tree_depth": (10, 10),
+            # "target_accept_prob": .95,
             "extra_fields": [
                 "potential_energy",
                 "num_steps",
