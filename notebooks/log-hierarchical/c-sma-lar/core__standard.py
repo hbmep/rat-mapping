@@ -9,9 +9,7 @@ from hbmep.config import Config
 from hbmep.utils import timing
 
 from paper.utils import setup_logging
-from models import (
-    HierarchicalBayesianModel,
-)
+from models import HB
 from constants import (
     TOML_PATH,
     DATA_PATH,
@@ -52,17 +50,17 @@ def main(M, response_ind):
     df[model.intensity] = np.log(df[model.intensity])
     df, encoder_dict = model.load(df=df)
 
-    # Run inference
-    ind = df[model.features[0]] < 2
-    df = df[ind].reset_index(drop=True).copy()
-    ind = df[model.features[1]] < 1
-    df = df[ind].reset_index(drop=True).copy()
-    ind = df[model.features[2]] < 1
-    df = df[ind].reset_index(drop=True).copy()
+    # # Run inference
+    # ind = df[model.features[0]] < 2
+    # df = df[ind].reset_index(drop=True).copy()
+    # ind = df[model.features[1]] < 1
+    # df = df[ind].reset_index(drop=True).copy()
+    # ind = df[model.features[2]] < 1
+    # df = df[ind].reset_index(drop=True).copy()
 
     logger.info(f"df.shape {df.shape}")
     logger.info(f"Running {M.NAME} with response {response_ind} - {model.response}")
-    _, posterior_samples = model.run(df=df, **model.run_kwargs)
+    mcmc, posterior_samples = model.run(df=df, **model.run_kwargs)
 
     # Predictions and recruitment curves
     prediction_df = model.make_prediction_dataset(df=df)
