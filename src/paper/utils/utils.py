@@ -70,6 +70,7 @@ def load_rat_data(
 
                 temp_df["participant"] = subject
                 temp_df["subdir_pattern"] = pattern
+                temp_df["subdir"] = subdir
 
                 # Rename columns to actual muscle names
                 muscles = cfg_data["muscles_emg"]
