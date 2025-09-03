@@ -16,13 +16,9 @@ endif
 build-base: check-env
 	@python$(python) -m venv .venv
 
-.PHONY: build
-build: build-base
+.PHONY: env
+env: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install -e . && \
 	pip install -e ../hbmep
-
-nb:
-	@source .venv/bin/activate && \
-	jupyter notebook
