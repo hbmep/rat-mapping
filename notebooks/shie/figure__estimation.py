@@ -1,0 +1,132 @@
+import os
+import pickle
+import inspect
+
+import pandas as pd
+from jax import random
+import numpy as np
+from scipy import stats
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import seaborn as sns
+
+import hbmep as mep
+from hbmep import functional as F
+from hbmep.util import site
+
+from paper.analysis import load_circ as load
+from paper.util import (
+    make_compare3p,
+    make_pdf,
+    make_dump,
+    compare_less_than
+)
+# from paper.testing import (
+#     checknans,
+#     check1
+# )
+
+BUILD_DIR = "/home/vishu/reports/rat-mapping/combined/efficacy__figure"
+os.makedirs(BUILD_DIR, exist_ok=True)
+
+plt.rcParams["svg.fonttype"] = "none"
+LABEL_SIZE = 10
+
+
+def estimation(model_dir, fig, ax):
+    (
+        df,
+		encoder,
+		model,
+		posterior,
+        subjects,
+		positions,
+        num_features,
+        *_
+    ) = load(model_dir)
+    palette = "viridis"
+    colors = sns.color_palette(palette=palette, n_colors=len(positions))
+
+    idx, labels = zip(*positions)
+    labels = [u.replace("Biphasic", "(B)") for u in labels]
+    labels = [u.replace("Pseudo-Mono", "(PS)") for u in labels]
+    labels = [u.replace("__", " ") for u in labels]
+    positions = list(zip(idx, labels))
+
+    param = posterior["a_delta_loc"]
+    param_mean = [0] + np.mean(param, axis=0).tolist()
+    _, positions = map(list, zip(*sorted(
+        zip(param_mean, positions),
+        key=lambda x: (-x[0], x[1][0])
+    )))
+
+    for i, (idx, position) in enumerate(positions):
+        color = colors[i]
+        if not idx:
+            label = position
+            label += " (reference)"
+            label = label[1:]
+            ax.axvline(x=0, label=label, color=color, linestyle="--", ymax=.95)
+            continue
+        samples = param[:, idx - 1]
+        sns.kdeplot(samples, color=color, label=position, ax=ax, bw_adjust=1.4)
+
+    ax.legend(reverse=True, title="Order (most effective to least)")
+    return
+
+
+def main():
+
+    model_dirs = [
+
+        # "/home/vishu/reports/rat-mapping/shie/estimation/4000w_4000s_4c_4t_15d_95a_tm/all/circ_est_mvn_reference_rl_masked", 
+        "/home/vishu/reports/rat-mapping/shie/estimation/4000w_4000s_4c_4t_15d_95a_tm/all/robust_circ_est_mvn_reference_rl_masked", 
+
+    ]
+
+    nr, nc = 1, 1
+    fig, axes = plt.subplots(
+        *(nr, nc), figsize=(5, 5), sharey=True, constrained_layout=True,
+        squeeze=False, sharex=True
+    )
+
+    for i, model_dir in enumerate(model_dirs):
+        estimation(model_dir, fig, axes[0, i])
+
+    for i in range(nr):
+        for j in range(nc):
+            ax = axes[i, j]
+            ax.spines[['top', 'right', 'left']].set_visible(False)
+            ax.tick_params(axis="both", left=False, labelleft=False)
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            ax.set_ylim(bottom=-.05)
+            # ax.xaxis.set_major_locator(MaxNLocator(5))
+    
+    x = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
+    lx = [np.log2(u / 100) for u in x]
+    lx = [np.round(u, 2) for u in lx]
+    ticklabels = [f"{v - 100}%" for u, v in zip(lx, x)]
+    ax = axes[0, 0]
+    ax.set_xticks(lx)
+    ax.set_xticklabels(ticklabels, rotation=90)
+    for j in range(nc):
+        axes[0, j].tick_params(axis="x", labelrotation=35, labelsize=LABEL_SIZE)
+
+    fig.supxlabel(
+        "% Threshold change from reference" + r" $(\log_2)$" "\n"
+        + r"($\leftarrow$ lower is more effective)",
+        fontsize=LABEL_SIZE
+    )
+    fig.align_xlabels()
+    fig.align_ylabels()
+
+    output_path = os.path.join(BUILD_DIR, f"estimation_shie.svg")
+    fig.savefig(output_path, dpi=600)
+    output_path = os.path.join(BUILD_DIR, "estimation_shie.pdf")
+    make_pdf([fig], output_path)
+    return
+
+
+if __name__ == "__main__":
+    main()
