@@ -34,17 +34,13 @@ def clear_axes(axes):
 def get_paths(experiment):
     build_dir = os.path.join(
         REPORTS,
-        "hbmep",
-        "notebooks",
-        "rat",
-        "loghb",
+        "rat-mapping",
         experiment.lower()[2:].replace('_', "")
     )
     toml_path = os.path.join(
         REPOS,
-        "hbmep",
+        "rat-mapping",
         "configs",
-        "rat",
         f"{experiment}.toml"
     )
     data_path = os.path.join(
@@ -1203,14 +1199,15 @@ def get_response_colors(response: list[str]):
 def compare_less_than(key, left, right, n_iters=50):
     left = left.copy()
     right = right.copy()
-    prob = []
-    for _ in range(n_iters):
-        key, subkey = random.split(key)
-        left_shuffled = np.array(random.permutation(subkey, left))
-        key, subkey = random.split(key)
-        right_shuffled = np.array(random.permutation(subkey, right))
-        prob.append((left_shuffled < right_shuffled).mean())
-    prob = np.mean(np.array(prob))
+    # prob = []
+    # for _ in range(n_iters):
+    #     key, subkey = random.split(key)
+    #     left_shuffled = np.array(random.permutation(subkey, left))
+    #     key, subkey = random.split(key)
+    #     right_shuffled = np.array(random.permutation(subkey, right))
+    #     prob.append((left_shuffled < right_shuffled).mean())
+    # prob = np.mean(np.array(prob))
+    prob = (left < right).mean()
     return key, prob
 
 
