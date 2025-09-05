@@ -27,23 +27,6 @@ SEPARATOR = "___"
 MODEL_DIR = "/home/vishu/reports/rat-mapping/combined/L_CIRC___L_SHIE___C_SMA_LAR/4000w_4000s_4c_4t_15d_95a_tm/hb_rl_masked"
 
 
-def run_2p(
-    run_id,
-    model_dir,
-    correction=True,
-    fig=None,
-    dump=False,
-):
-    df, model, posterior, subjects, positions, = arrange(run_id, model_dir)
-    a = posterior[site.a].copy()
-    a = np.median(a, axis=0, keepdims=True)
-
-    fig, axes = plt.subplots()
-    output_path = os.path.join(BUILD_DIR, f"{run_id}.pkl")
-    if dump: make_dump((positions, a,), output_path)
-    return (None, None),
-
-
 def run(
     run_id,
     model_dir,
@@ -54,6 +37,7 @@ def run(
 ):
     if run_id == "size-ground":
         return run_2p(run_id, model_dir, correction, fig, dump)
+
     df, model, posterior, subjects, positions, = arrange(run_id, model_dir)
     a = posterior[site.a].copy()
     a = np.median(a, axis=0, keepdims=True)
@@ -115,6 +99,22 @@ def run(
         output_path
     )
     return (fig, axes),
+
+
+def run_2p(
+    run_id,
+    model_dir,
+    correction=True,
+    fig=None,
+    dump=False,
+):
+    df, model, posterior, subjects, positions, = arrange(run_id, model_dir)
+    a = posterior[site.a].copy()
+    a = np.median(a, axis=0, keepdims=True)
+
+    output_path = os.path.join(BUILD_DIR, f"{run_id}.pkl")
+    if dump: make_dump((positions, a,), output_path)
+    return (None, None),
 
 
 def load(model_dir):

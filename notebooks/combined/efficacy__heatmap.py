@@ -9,7 +9,6 @@ from paper.util import make_pdf
 from core__hb import BUILD_DIR
 from efficacy__analysis import run, BUILD_DIR, MODEL_DIR
 os.makedirs(BUILD_DIR, exist_ok=True)
-
 plt.rcParams["svg.fonttype"] = "none"
 
 
@@ -87,8 +86,8 @@ def make_heatmap(run_id, positions, change, ci, pvalue, df):
         figsize=(7.5, 5)
         fontsize= 7
     elif run_id in {"circ"}:
-        figsize=(8, 10)
-        fontsize= 5
+        figsize=(8, 8)
+        fontsize= 4.5
     fig, axes = plt.subplots(
         *(nr, nc), figsize=figsize, constrained_layout=True,
         squeeze=False
@@ -116,30 +115,44 @@ def make_heatmap(run_id, positions, change, ci, pvalue, df):
         np.char.add(annot_arr, "*"),
         annot_arr
     )
+
+    skip_ci = False
+    if run_id == "circ":
+        skip_ci = True
+
     annot_kws = {"ha": 'center', "va": 'center'}
+    annot_position = (0.5, .75)
+    if skip_ci:
+        annot_position = (0.5, 0.65)
     annotate_heatmap(
         ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
-        annot_position=(0.5, .75), **annot_kws, fontsize=fontsize
+        annot_position=annot_position, **annot_kws, fontsize=fontsize
     )
-    annot_arr = ci
-    annot_kws = {"ha": 'center', "va": 'center'}
-    annotate_heatmap(
-        ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
-        annot_position=(0.5, .5), **annot_kws, fontsize=fontsize
-    )
+    if not skip_ci:
+        annot_arr = ci
+        annot_kws = {"ha": 'center', "va": 'center'}
+        annotate_heatmap(
+            ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
+            annot_position=(0.5, .5), **annot_kws, fontsize=fontsize
+        )
     annot_arr = change
     annot_kws = {"ha": 'center', "va": 'center'}
+    annot_position=(0.5, .25)
+    if skip_ci:
+        annot_position=(0.5, .3)
     annotate_heatmap(
         ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
-        annot_position=(0.5, .25), **annot_kws, fontsize=fontsize
+        annot_position=annot_position, **annot_kws, fontsize=fontsize
     )
     annot_arr = df
     annot_kws = {"ha": 'left', "va": 'bottom'}
     annotate_heatmap(
         ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
-        annot_position=(0, 1), **annot_kws, fontsize=fontsize
+        annot_position=(0, 1), **annot_kws, fontsize=fontsize - 1
     )
     ax.tick_params(axis="both", rotation=0)
+    if run_id == "circ":
+        ax.tick_params(axis="both", labelsize=4)
     return (fig, axes),
 
 
@@ -147,25 +160,29 @@ def main():
     model_dir = MODEL_DIR
     out = []
 
-    # ids = ["diam", "radii", "vertices", "shie"]
-    # a_mean = []
-    # positions = []
-    # counter = 0
-    # for run_id_ in ids:
-    #     curr_a_mean, curr_postions = run(run_id_, model_dir, skip_figure=True)
-    #     a_mean.append(curr_a_mean)
-    #     curr_postions = [(u + counter, v) for u, v in curr_postions]
-    #     positions += curr_postions
-    #     counter += len(curr_postions)
-    # a_mean = np.concatenate(a_mean, axis=-1)
-    # positions, change, ci, pvalue, df, = make_test(a_mean, positions)
-    # run_id = "circ"
-    # fig = make_heatmap(
-    #     run_id, positions, change, ci, pvalue, df
-    # )
-    # fig = fig[0][0]
-    # output_path = os.path.join(BUILD_DIR, f"heat_{run_id}.svg")
-    # fig.savefig(output_path, dpi=600)
+    ids = ["diam", "radii", "vertices", "shie"]
+    a_mean = []
+    positions = []
+    counter = 0
+    for run_id_ in ids:
+        curr_a_mean, curr_postions = run(run_id_, model_dir, skip_figure=True)
+        a_mean.append(curr_a_mean)
+        curr_postions = [(u + counter, v) for u, v in curr_postions]
+        positions += curr_postions
+        counter += len(curr_postions)
+    a_mean = np.concatenate(a_mean, axis=-1)
+    positions, change, ci, pvalue, df, = make_test(a_mean, positions)
+    run_id = "circ"
+    fig = make_heatmap(
+        run_id, positions, change, ci, pvalue, df
+    )
+    fig = fig[0][0]
+    output_path = os.path.join(BUILD_DIR, f"heat_{run_id}.svg")
+    fig.savefig(output_path, dpi=600)
+    output_path = os.path.join(BUILD_DIR, f"heat_{run_id}.pdf")
+    fig.savefig(output_path, dpi=600)
+    print(f"Saved to {output_path}")
+    return
 
     run_ids = [
         "diam",
