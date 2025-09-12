@@ -11,24 +11,24 @@ Installation
 Begin by creating a virtual environment.
 
 ```bash
-    python3.11 -m venv .venv
+python3.11 -m venv .venv
 ```
 
 Note that the above command uses Python 3.11. If you have a different version of Python, you can use [conda](https://conda.io) to create a new environment with the required version of Python.
 
 ```bash
-    conda create -n python-311 python=3.11 -y
-    conda activate python-311
-    python -m venv .venv
-    conda deactivate
+conda create -n python-311 python=3.11 -y
+conda activate python-311
+python -m venv .venv
+conda deactivate
 ```
 
 We can then install in editable mode.
 
 ```bash
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .
+@source .venv/bin/activate && \
+pip install --upgrade pip && \
+pip install -e .
 ```
 
 Now, the Python interpreter should be located at ``.venv/bin/python``. You can use this to run the scripts in the [notebooks](https://github.com/hbmep/rat-mapping/tree/main/notebooks) directory.
@@ -46,7 +46,7 @@ Please cite [Pascual-Leone et al., 2025](https://doi.org/10.1101/2025.09.05.6740
         doi = {10.1101/2025.09.05.674051}
     }
 
-Additionally, you can cite [Tyagi et al., 2024](https://doi.org/10.48550/arXiv.2407.08709) if you find `hbmep` useful in your research. The BibTeX entry for the paper is::
+Additionally, you can cite [Tyagi et al., 2024](https://doi.org/10.48550/arXiv.2407.08709) if you find hbMEP useful in your research. The BibTeX entry for the paper is::
 
     @article{tyagi_hierarchical_2024,
         title = {Hierarchical {Bayesian} estimation of motor-evoked potential recruitment curves yields accurate and robust estimates},
