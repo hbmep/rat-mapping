@@ -10,26 +10,26 @@ Installation
 
 Begin by creating a virtual environment.
 
-.. code-block:: bash
-
+```bash
     python3.11 -m venv .venv
+```
 
 Note that the above command uses Python 3.11. If you have a different version of Python, you can use [conda](https://conda.io) to create a new environment with the required version of Python.
 
-.. code-block:: bash
-
+```bash
     conda create -n python-311 python=3.11 -y
     conda activate python-311
     python -m venv .venv
     conda deactivate
+```
 
 We can then install in editable mode.
 
-.. code-block:: bash
-
+```bash
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install -e .
+```
 
 Now, the Python interpreter should be located at ``.venv/bin/python``. You can use this to run the scripts in the [notebooks](https://github.com/hbmep/rat-mapping/tree/main/notebooks) directory.
 
