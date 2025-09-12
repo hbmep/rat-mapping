@@ -1,9 +1,9 @@
 Electrode position, size, and orientation determine efficacy of cervical epidural stimulation to recruit forelimb muscles in rats
 =====
 
-This repository has code to reproduce results in the manuscript [Electrode position, size, and orientation determine efficacy of cervical epidural stimulation to recruit forelimb muscles in rats](https://arxiv.org/abs/2407.08709).
+This repository has code to reproduce results in the manuscript [Electrode position, size, and orientation determine efficacy of cervical epidural stimulation to recruit forelimb muscles in rats](https://doi.org/10.1101/2025.09.05.674051).
 
-It uses the [hbmep v0.7.0](https://github.com/hbmep/hbmep). See [pyproject.toml](https://github.com/hbmep/rat-mapping/blob/main/pyproject.toml) for dependencies.
+It uses the [hbmep v0.7.0](https://github.com/hbmep/hbmep/releases/tag/v0.7.0). See [pyproject.toml](https://github.com/hbmep/rat-mapping/blob/main/pyproject.toml) for dependencies.
 
 Installation
 ---------------
