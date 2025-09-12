@@ -3,7 +3,6 @@ import os
 from paper.util import get_paths
 from paper.constants.smalar import (
     EXPERIMENT,
-    DATA_PATH_FILTERED,
     # Laterality
     GROUND_BIG,
     GROUND_SMALL,

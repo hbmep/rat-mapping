@@ -22,15 +22,16 @@ from constants import (
     GROUND_SMALL
 )
 
-logger = logging.getLogger(__name__)
-
 
 @timing
 def main(model):
     # Load data
-    src = DATA_PATH
-    data = pd.read_csv(src)
-    df = load_csmalar_data(data)
+    src = "/home/vishu/data/hbmep-processed/rat/C_SMA_LAR"
+    data_path = os.path.join(src, "data.csv")
+    mat_path = os.path.join(src, "mat.npy")
+    data = pd.read_csv(data_path)
+    mat = np.load(mat_path)
+    df, mat = load_csmalar_data(data, mat=mat)
     
     subset = (
         NO_GROUND
@@ -45,6 +46,7 @@ def main(model):
     assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
     idx = df[cols].apply(tuple, axis=1).isin(subset)
     df = df[idx].reset_index(drop=True).copy()
+    mat = mat[idx]
     # output_path = os.path.join(model.build_dir, "unfiltered.pdf")
     # model.plot(df, output_path=output_path)
 
@@ -60,15 +62,17 @@ def main(model):
     # model.plot(df, output_path=output_path, hue=hue_columns)
 
     idx = hue.any(axis=1)
-    logger.info(f"filter: {idx.sum()}")
+    print(f"filter: {idx.sum()}")
     df = df[~idx].reset_index(drop=True).copy()
+    mat = mat[~idx]
     # output_path = os.path.join(model.build_dir, "filtered.pdf")
     # model.plot(df, output_path=output_path)
 
-    root, _ = os.path.splitext(DATA_PATH)
-    output_path = f"{root}_filtered.csv"
+    output_path = "/home/vishu/data/rat-dataset/C_SMA_LAR.csv"
     df.to_csv(output_path, index=False)
-    logger.info(f"Saved filtered data to {output_path}")
+    print(f"Saved to {output_path}")
+    output_path = "/home/vishu/data/rat-dataset/C_SMA_LAR.npy"
+    np.save(output_path, mat)
     return
 
 
@@ -76,5 +80,4 @@ if __name__ == "__main__":
     model = BaseModel(toml_path=TOML_PATH)
     model.features = ["participant", "segment", "lat", "compound_size"]
     model.build_dir = os.path.join(BUILD_DIR, "filter")
-    setup_logging(model.build_dir)
     main(model)
