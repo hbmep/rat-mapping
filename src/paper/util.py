@@ -13,7 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 from hbmep.util import site
 
-from paper.constants import DATA, REPOS, REPORTS
+from paper.constants import DATA, REPO, REPORTS
 from paper.constants import (
     circ as circ_constants,
     shie as shie_constants,
@@ -34,26 +34,20 @@ def clear_axes(axes):
 def get_paths(experiment):
     build_dir = os.path.join(
         REPORTS,
-        "rat-mapping",
         experiment.lower()[2:].replace('_', "")
     )
     toml_path = os.path.join(
-        REPOS,
-        "rat-mapping",
+        REPO,
         "configs",
         f"{experiment}.toml"
     )
     data_path = os.path.join(
         DATA,
-        "rat",
-        experiment,
-        "data.csv"
+        f"{experiment}.csv",
     )
     mep_matrix_path = os.path.join(
         DATA,
-        "rat",
-        experiment,
-        "mat.npy"
+        f"{experiment}.mat",
     )
     return build_dir, toml_path, data_path, mep_matrix_path
 
@@ -232,7 +226,7 @@ def annotate_heatmap(
     return
 
 
-def load_csmalar_data(data: pd.DataFrame):
+def load_csmalar_data(data: pd.DataFrame, mat=None):
     data = data.copy()
     # make sure columns channel1_segment and channel2_segment are correct
     ch1 = data.compound_position.apply(
@@ -298,18 +292,28 @@ def load_csmalar_data(data: pd.DataFrame):
     remove_size = ["B-S"]
     idx = df.compound_size.isin(remove_size)
     df = df[~idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~idx]
     # Remove contacts with designation RM, R, RR
     remove_designation = ["RM", "R", "RR"]
     idx = df.channel1_designation.isin(remove_designation)
     df = df[~idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~idx]
     idx = df.channel2_designation.isin(remove_designation)
     df = df[~idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~idx]
     # Remove C7 segment
     remove_segments = ["C7"]
     idx = df.channel1_segment.isin(remove_segments)
     df = df[~idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~idx]
     idx = df.channel2_segment.isin(remove_segments)
     df = df[~idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~idx]
     # Remove bipolar contacts that connect between two different segments.
     # these were recorded by mistake during experiments and won't be analyzed
     idx = (
@@ -317,10 +321,14 @@ def load_csmalar_data(data: pd.DataFrame):
         | df.channel1_segment.isna()
     )
     df = df[idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[idx]
     assert (
         (df.channel1_segment == df.channel2_segment)
         | df.channel1_segment.isna()
     ).all()
+    if mat is not None:
+        return df, mat
     return df
 
 
@@ -440,14 +448,14 @@ def load_lat(
     set_reference=False,
     **kw
 ):
-    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
+    _, _, DATA_PATH, _ = get_paths(smalar_constants.EXPERIMENT)
     GROUND_BIG = smalar_constants.GROUND_BIG
     GROUND_SMALL = smalar_constants.GROUND_SMALL
     NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
     NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
 
     # Load data
-    src = DATA_PATH_FILTERED
+    src = DATA_PATH
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
@@ -510,7 +518,7 @@ def load_size(
     set_reference=False,
     **kw
 ):
-    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
+    _, _, DATA_PATH, _ = get_paths(smalar_constants.EXPERIMENT)
     NO_GROUND = smalar_constants.NO_GROUND
     GROUND = smalar_constants.GROUND
     GROUND_BIG = smalar_constants.GROUND_BIG
@@ -519,7 +527,7 @@ def load_size(
     NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
 
     # Load data
-    src = DATA_PATH_FILTERED
+    src = DATA_PATH
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
