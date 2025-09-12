@@ -1,9 +1,12 @@
 import os
 
 HOME = os.getenv("HOME")
-DATA = os.path.join(HOME, "data", "hbmep-processed")
-REPOS = os.path.join(HOME, "repos", "refactor", "fix")
-REPORTS = os.path.join(HOME, "reports")
+# Point this to directory where this code repository is present
+REPO = os.path.join(HOME, "repos", "rat-mapping")
+# Point this to directory containing rat dataset
+DATA = os.path.join(HOME, "data", "rat-dataset")
+# Point this to directory where output should be saved
+REPORTS = os.path.join(HOME, "reports", "rat-mapping")
 
 MODEL_FILE = "model.pkl"
 INFERENCE_FILE = "inf.pkl"

@@ -2,14 +2,6 @@ import os
 from paper.constants import HOME
 
 EXPERIMENT = "C_SMA_LAR"
-DATA_PATH_FILTERED = os.path.join(
-    HOME,
-    "data",
-    "hbmep-processed",
-    "rat",
-    EXPERIMENT,
-    "data_filtered.csv"
-)
 
 # Laterality
 GROUND_BIG = [
