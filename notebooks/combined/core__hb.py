@@ -12,7 +12,7 @@ from paper.constants import DATA, REPORTS
 
 logger = logging.getLogger(__name__)
 
-BUILD_DIR = os.path.join(REPORTS, "rat-mapping", "combined")
+BUILD_DIR = os.path.join(REPORTS, "combined")
 CONFIG = {
     "variables": {
         "intensity": "pulse_amplitude",
@@ -28,7 +28,7 @@ def main(model):
     assert run_id in {
         "L_CIRC___L_SHIE___C_SMA_LAR",
     }
-    src = os.path.join(DATA, "rat", f"{run_id}.csv")
+    src = os.path.join(DATA, "combined-data.csv")
     df = pd.read_csv(src)
 
     if model.test_run:
@@ -68,13 +68,12 @@ if __name__ == "__main__":
     model._model = model.hb_rl_masked
 
     response_id = None
-    response_id = int(sys.argv[1:][0])
-    # response_id = 1
+    # response_id = int(sys.argv[1:][0])
+    response_id = 1
     model.response = model.response[response_id: response_id + 1]
 
     model.mcmc_params = {
         "num_chains": 4,
-
         "thinning": 4,
         "num_warmup": 4000,
         "num_samples": 4000,
