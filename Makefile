@@ -20,5 +20,4 @@ build-base: check-env
 env: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -e . && \
-	pip install -e ../hbmep
+	pip install -e .
