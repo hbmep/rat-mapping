@@ -43,23 +43,9 @@ size_df = make_combined(
 df = pd.concat([circ_df, shie_df, size_df], ignore_index=True).reset_index(drop=True).copy()
 assert df.shape[0] == sum([u.shape[0] for u in [circ_df, shie_df, size_df]])
 
-# output_path = os.path.join(DATA, "rat", f"{SEPARATOR.join(experiments)}.csv")
-# df.to_csv(output_path, index=False)
-# print(f"Saved to {output_path}")
+output_path = os.path.join(DATA, "combined-data.csv")
+df.to_csv(output_path, index=False)
+print(f"Saved to {output_path}")
 
-features = ["participant", "compound_position"]
-experiment = "J_RCML"
-experiments.append(experiment)
-rcml_df = make_combined(
-    experiment, load_rcml, INTENSITY, features, RESPONSE, RUN_ID
-)
-
-df = pd.concat([circ_df, shie_df, size_df, rcml_df], ignore_index=True).reset_index(drop=True).copy()
-assert df.shape[0] == sum([u.shape[0] for u in [circ_df, shie_df, size_df, rcml_df]])
-
-# compare_df = pd.read_csv("/home/vishu/data/hbmep-processed/rat/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML.csv")
+# compare_df = pd.read_csv(output_path)
 # pd.testing.assert_frame_equal(df, compare_df)
-
-# output_path = os.path.join(DATA, "rat", f"{SEPARATOR.join(experiments)}.csv")
-# df.to_csv(output_path, index=False)
-# print(f"Saved to {output_path}")
