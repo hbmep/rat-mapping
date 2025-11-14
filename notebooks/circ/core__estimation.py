@@ -12,6 +12,13 @@ from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
+TEST_RUN = False
+# TEST_RUN = True
+
+RUN_ID = "diam"
+# RUN_ID = "radii"
+# RUN_ID = "vertices"
+
 
 @timing
 def main(model):
@@ -45,15 +52,14 @@ def main(model):
 
 if __name__ == "__main__":
     model = Estimation(toml_path=TOML_PATH)
-    model.test_run = True
+    model.test_run = TEST_RUN
     model.use_mixture = True
 
     # model._model = model.circ_est_mvn_reference_rl_masked
-    model._model = model.robust_circ_est_mvn_reference_rl_masked
-
-    model.run_id = "diam"
-    # model.run_id = "radii"
-    # model.run_id = "vertices"
+    # model._model = model.robust_circ_est_mvn_reference_rl_masked
+    model._model = model.circ_est_mvn_reference_rl_masked_altfix
+    # model._model = model.robust_circ_est_mvn_reference_rl_masked_altfix
+    model.run_id = RUN_ID
 
     model.mcmc_params = {
         "num_chains": 4,
