@@ -12,6 +12,9 @@ from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
+TEST_RUN = False
+# TEST_RUN = True
+
 
 @timing
 def main(model):
@@ -46,9 +49,12 @@ def main(model):
 
 if __name__ == "__main__":
     model = Estimation(toml_path=TOML_PATH)
-    model.test_run = True
+    model.test_run = TEST_RUN
 
-    model._model = model.circ_est_mvn_reference_rl_masked
+    # model._model = model.circ_est_mvn_reference_rl_masked
+    # model._model = model.robust_circ_est_mvn_reference_rl_masked
+    model._model = model.circ_est_mvn_reference_rl_masked_altfix
+    # model._model = model.robust_circ_est_mvn_reference_rl_masked_altfix
     model.use_mixture = True
     model.run_id = "all"
 
