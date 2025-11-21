@@ -288,12 +288,70 @@ def load_csmalar_data(data: pd.DataFrame, mat=None):
     )
 
     df = data.copy()
-    # Remove contacts with size B-S
-    remove_size = ["B-S"]
+    # Remove contacts with size B-S and S-B
+    remove_size = ["B-S", "S-B"]
     idx = df.compound_size.isin(remove_size)
     df = df[~idx].reset_index(drop=True).copy()
     if mat is not None:
         mat = mat[~idx]
+
+    flipped = df.lat.unique()
+    flipped = sorted([tuple(sorted(u.split("-"))) for u in flipped])
+    flipped_set = sorted(set(flipped))
+    print(len(flipped), len(flipped_set))
+    from collections import Counter
+    flipped_counts = Counter(flipped)
+    print(f"Duplicated: {[u for u, v in flipped_counts.items() if v > 1]}")
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "LM-M"
+    print(df[idx].participant.unique())
+    idx = df.lat == "M-LM"
+    print(df[idx].participant.unique())
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "L-LL"
+    print(df[idx].participant.unique())
+    idx = df.lat == "LL-L"
+    print(df[idx].participant.unique())
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "LM2-M"
+    print(df[idx].participant.unique())
+    idx = df.lat == "M-LM2"
+    print(df[idx].participant.unique())
+
+    flipped_combinations = [
+        ("amap01", "LL-L"),
+        ("amap02", "LL-L"),
+        ("amap01", "LM-M"),
+        ("amap02", "LM-M"),
+    ]
+    flipped_features = df[["participant", "lat"]].apply(tuple, axis=1)
+    flipped_idx = flipped_features.isin(flipped_combinations)
+    df = df[~flipped_idx].reset_index(drop=True).copy()
+    if mat is not None:
+        mat = mat[~flipped_idx]
+    df.lat = df.lat.replace({"LM2-M": "M-LM2"})
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "LM-M"
+    print(df[idx].participant.unique())
+    idx = df.lat == "M-LM"
+    print(df[idx].participant.unique())
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "L-LL"
+    print(df[idx].participant.unique())
+    idx = df.lat == "LL-L"
+    print(df[idx].participant.unique())
+
+    [print("clear") for _ in range(10)]
+    idx = df.lat == "LM2-M"
+    print(df[idx].participant.unique())
+    idx = df.lat == "M-LM2"
+    print(df[idx].participant.unique())
+
     # Remove contacts with designation RM, R, RR
     remove_designation = ["RM", "R", "RR"]
     idx = df.channel1_designation.isin(remove_designation)
@@ -453,15 +511,19 @@ def load_lat(
     GROUND_SMALL = smalar_constants.GROUND_SMALL
     NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
     NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
+    INBETWEEN_BIG = smalar_constants.INBETWEEN_BIG
+    INBETWEEN_SMALL = smalar_constants.INBETWEEN_SMALL
 
     # Load data
     src = DATA_PATH
+    if "between" in run_id:
+        src = src.replace(".csv", "_inbetween.csv")
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
     assert run_id in {
         "lat-small-ground", "lat-big-ground", "lat-small-no-ground",
-        "lat-big-no-ground"
+        "lat-big-no-ground", "lat-small-inbetween", "lat-big-inbetween"
     }
     subset = []
     match run_id:
@@ -469,6 +531,8 @@ def load_lat(
         case "lat-big-ground": subset = GROUND_BIG
         case "lat-small-no-ground": subset = NO_GROUND_SMALL
         case "lat-big-no-ground": subset = NO_GROUND_BIG
+        case "lat-small-inbetween": subset = GROUND_SMALL + INBETWEEN_SMALL
+        case "lat-big-inbetween": subset = GROUND_BIG + INBETWEEN_BIG
         case _: raise ValueError
 
     if set_reference:
@@ -486,11 +550,18 @@ def load_lat(
 
     assert len(set(subset)) == len(subset)
     cols = ["lat", "segment", "compound_size"]
-    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    if "between" not in run_id:
+        assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
     idx = df[cols].apply(tuple, axis=1).isin(subset)
     df = df[idx].reset_index(drop=True).copy()
     df[features[-1]] = df[features[-1]].replace(
-        {"-LM1": "-LM", "M-LM1": "M-LM"}
+        {
+            "-LM1": "-LM", "M-LM1": "M-LM",
+            "LM1-L": "LM-L",
+            "LM1-LL": "LM-LL",
+            "LM2-LM1": "LM2-LM",
+            "M-LM1": "M-LM"
+        }
     )
 
     if set_reference:

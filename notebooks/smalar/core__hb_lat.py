@@ -42,11 +42,13 @@ if __name__ == "__main__":
     model.use_mixture = True
     model.test_run = True
 
-    # model._model = model.hb_mvn_rl_masked
-    model._model = model.robust_hb_mvn_rl_masked
+    model._model = model.hb_mvn_rl_masked
+    # model._model = model.robust_hb_mvn_rl_masked
 
-    model.run_id = "lat-small-ground"
+    # model.run_id = "lat-small-ground"
     # model.run_id = "lat-big-ground"
+    model.run_id = "lat-small-inbetween"
+    # model.run_id = "lat-big-inbetween"
 
     model.mcmc_params = {
         "num_chains": 4,

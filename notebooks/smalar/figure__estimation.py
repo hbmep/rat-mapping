@@ -67,9 +67,18 @@ def estimation_lat(model_dir, fig, ax):
             ax.axvline(x=0, label=label, color=color, linestyle="--", ymax=.95)
             continue
         samples = param[:, idx - 1]
+        samples = (2 ** samples - 1) * 100
         sns.kdeplot(samples, color=color, label=position, ax=ax, bw_adjust=1.4)
 
+    xticks = [25 * i for i in range(-3, 5)]
+    ax.set_xticks(xticks)
+    ax.set_xlim(xticks[0] - 5, xticks[-1] + 5)
     ax.legend(reverse=True, title="Order (most effective to least)")
+    ax.set_xlabel(
+        "% Threshold change from reference" + "\n"
+        + r"($\leftarrow$ lower is more effective)",
+        fontsize=LABEL_SIZE
+    )
     return
 
 
@@ -98,26 +107,26 @@ def main_lat():
             ax = axes[i, j]
             ax.spines[['top', 'right', 'left']].set_visible(False)
             ax.tick_params(axis="both", left=False, labelleft=False)
-            ax.set_xlabel("")
+            # ax.set_xlabel("")
             ax.set_ylabel("")
-            ax.set_ylim(bottom=-.02)
+            # ax.set_ylim(bottom=-.02)
             # ax.xaxis.set_major_locator(MaxNLocator(5))
     
-    x = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
-    lx = [np.log2(u / 100) for u in x]
-    lx = [np.round(u, 2) for u in lx]
-    ticklabels = [f"{v - 100}%" for u, v in zip(lx, x)]
-    ax = axes[0, 0]
-    ax.set_xticks(lx)
-    ax.set_xticklabels(ticklabels, rotation=90)
-    for j in range(nc):
-        axes[0, j].tick_params(axis="x", labelrotation=35, labelsize=LABEL_SIZE)
+    # x = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
+    # lx = [np.log2(u / 100) for u in x]
+    # lx = [np.round(u, 2) for u in lx]
+    # ticklabels = [f"{v - 100}%" for u, v in zip(lx, x)]
+    # ax = axes[0, 0]
+    # ax.set_xticks(lx)
+    # ax.set_xticklabels(ticklabels, rotation=90)
+    # for j in range(nc):
+    #     axes[0, j].tick_params(axis="x", labelrotation=35, labelsize=LABEL_SIZE)
    
-    fig.supxlabel(
-        "% Threshold change from reference" + r" $(\log_2)$" "\n"
-        + r"($\leftarrow$ lower is more effective)",
-        fontsize=LABEL_SIZE,
-    )
+    # fig.supxlabel(
+    #     "% Threshold change from reference" + r" $(\log_2)$" "\n"
+    #     + r"($\leftarrow$ lower is more effective)",
+    #     fontsize=LABEL_SIZE,
+    # )
     fig.align_xlabels()
     fig.align_ylabels()
 
@@ -157,9 +166,19 @@ def estimation_size(model_dir, fig, ax):
     for i, (idx, position) in enumerate(positions):
         color = colors[i]
         samples = param[:, idx]
-        sns.kdeplot(-samples, color=color, label=position, ax=ax, bw_adjust=1.4)
+        samples = -samples
+        samples = (2 ** samples - 1) * 100
+        sns.kdeplot(samples, color=color, label=position, ax=ax, bw_adjust=1.4)
 
+    xticks = [50 * i for i in range(-1, 6)]
+    ax.set_xticks(xticks)
+    ax.set_xlim(xticks[0] - 5, xticks[-1] + 5)
     ax.legend(reverse=True, title="Order (most effective to least)")
+    ax.set_xlabel(
+        "% Threshold change of Small from Large electrodes " + "\n"
+        + r"($\rightarrow$ Large electrodes are more effective)",
+        fontsize=LABEL_SIZE
+    )
     return
 
 
@@ -186,26 +205,26 @@ def main_size():
             ax = axes[i, j]
             ax.spines[['top', 'right', 'left']].set_visible(False)
             ax.tick_params(axis="both", left=False, labelleft=False)
-            ax.set_xlabel("")
+            # ax.set_xlabel("")
             ax.set_ylabel("")
-            ax.set_ylim(bottom=-.01)
+            # ax.set_ylim(bottom=-.01)
             # ax.xaxis.set_major_locator(MaxNLocator(5))
     
-    x = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
-    lx = [np.log2(u / 100) for u in x]
-    lx = [np.round(u, 2) for u in lx]
-    ticklabels = [f"{v - 100}%" for u, v in zip(lx, x)]
-    ax = axes[0, 0]
-    ax.set_xticks(lx)
-    ax.set_xticklabels(ticklabels, rotation=90)
-    for j in range(nc):
-        axes[0, j].tick_params(axis="x", labelrotation=35, labelsize=LABEL_SIZE)
+    # x = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350]
+    # lx = [np.log2(u / 100) for u in x]
+    # lx = [np.round(u, 2) for u in lx]
+    # ticklabels = [f"{v - 100}%" for u, v in zip(lx, x)]
+    # ax = axes[0, 0]
+    # ax.set_xticks(lx)
+    # ax.set_xticklabels(ticklabels, rotation=90)
+    # for j in range(nc):
+    #     axes[0, j].tick_params(axis="x", labelrotation=35, labelsize=LABEL_SIZE)
    
-    fig.supxlabel(
-        "% Threshold change of Small from Large electrodes " + r"$(\log_2)$" + "\n"
-        + r"($\rightarrow$ Large electrodes are more effective)",
-        fontsize=LABEL_SIZE
-    )
+    # fig.supxlabel(
+    #     "% Threshold change of Small from Large electrodes " + r"$(\log_2)$" + "\n"
+    #     + r"($\rightarrow$ Large electrodes are more effective)",
+    #     fontsize=LABEL_SIZE
+    # )
     fig.align_xlabels()
     fig.align_ylabels()
 

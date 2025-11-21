@@ -11,6 +11,9 @@ from paper.constants.smalar import (
     # Size
     GROUND,
     NO_GROUND,
+    # Inbetween
+    INBETWEEN_BIG,
+    INBETWEEN_SMALL
 )
 
 BUILD_DIR, TOML_PATH, DATA_PATH, MEP_MATRIX_PATH = get_paths(EXPERIMENT)
