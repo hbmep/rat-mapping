@@ -19,8 +19,8 @@ def main(model):
     df = load_lat(**model.variables, run_id=run_id)
 
     if model.test_run:
-        os.makedirs(model.build_dir, exist_ok=True)
         model.build_dir = os.path.join(model.build_dir, "test_run")
+        os.makedirs(model.build_dir, exist_ok=True)
         subset = ["amap01", "amap02"]
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
@@ -42,13 +42,19 @@ if __name__ == "__main__":
     model.use_mixture = True
     model.test_run = True
 
-    model._model = model.hb_mvn_rl_masked
+    model._model = model.hb_rl_masked
+    # model._model = model.hb_mvn_rl_masked
     # model._model = model.robust_hb_mvn_rl_masked
 
     # model.run_id = "lat-small-ground"
     # model.run_id = "lat-big-ground"
     model.run_id = "lat-small-inbetween"
     # model.run_id = "lat-big-inbetween"
+
+    response_id = None
+    # response_id = int(sys.argv[1:][0])
+    response_id = 1
+    model.response = model.response[response_id: response_id + 1]
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -64,5 +70,10 @@ if __name__ == "__main__":
     model.build_dir = os.path.join(
         BUILD_DIR, "hb", model.name, model.run_id, model._model.__name__
     )
+
+    if response_id is not None:
+        assert model.num_response == 1
+        model.build_dir = os.path.join(model.build_dir, model.response[0])
+
     setup_logging(model.build_dir)
     main(model)
