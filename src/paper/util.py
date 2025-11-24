@@ -564,6 +564,9 @@ def load_lat(
         }
     )
 
+    if "between" in run_id:
+        df.segment = df.segment.apply(lambda x: "-" + x.split("-")[1])
+
     if set_reference:
         if "no-ground" in run_id:
             df["segment"] = df["segment"].apply(

@@ -40,10 +40,10 @@ if __name__ == "__main__":
     model = HB(toml_path=TOML_PATH)
     model.features = ["participant", "segment", "lat"]
     model.use_mixture = True
-    model.test_run = True
+    model.test_run = False
 
-    model._model = model.hb_rl_masked
-    # model._model = model.hb_mvn_rl_masked
+    # model._model = model.hb_rl_masked
+    model._model = model.hb_mvn_rl_masked
     # model._model = model.robust_hb_mvn_rl_masked
 
     # model.run_id = "lat-small-ground"
@@ -54,7 +54,8 @@ if __name__ == "__main__":
     response_id = None
     # response_id = int(sys.argv[1:][0])
     response_id = 1
-    model.response = model.response[response_id: response_id + 1]
+    if response_id is not None:
+        model.response = model.response[response_id: response_id + 1]
 
     model.mcmc_params = {
         "num_chains": 4,
