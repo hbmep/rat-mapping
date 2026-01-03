@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
+from hbmep import BaseModel
 from hbmep.util import site
+from numpyro.infer import MCMC
 
 from paper.constants import DATA, REPO, REPORTS
 from paper.constants import (
@@ -152,7 +154,7 @@ def load_model(
     inference_file="inf.pkl",
     model_file="model.pkl",
     mcmc_file="mcmc.pkl",
-):
+) -> list[pd.DataFrame, dict, dict, BaseModel, MCMC]:
     src = os.path.join(model_dir, inference_file)
     with open(src, "rb") as f:
         df, encoder, posterior, = pickle.load(f)
@@ -919,7 +921,8 @@ def make_compare3p(
     if fig is None:
         nr, nc = 1, 3
         fig, axes = plt.subplots(
-            *(nr, nc), figsize=(7 * nc, 4.5 * nr), squeeze=False,
+            # *(nr, nc), figsize=(7 * nc, 4.5 * nr), squeeze=False,
+            *(nr, nc), figsize=(11 * nc, 8 * nr), squeeze=False,
             constrained_layout=True
         )
     else: fig, axes = fig
