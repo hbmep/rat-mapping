@@ -53,8 +53,10 @@ if __name__ == "__main__":
 
     # model._model = model.circ_est_mvn_reference_rl_masked
     # model._model = model.robust_circ_est_mvn_reference_rl_masked
-    model._model = model.circ_est_mvn_reference_rl_masked_altfix
+    # model._model = model.circ_est_mvn_reference_rl_masked_altfix
     # model._model = model.robust_circ_est_mvn_reference_rl_masked_altfix
+    # model._model = model.circ_mixed_reference
+    model._model = model.circ_mixed_reference_2
     model.use_mixture = True
     model.run_id = "all"
 
