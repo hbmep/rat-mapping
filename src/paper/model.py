@@ -1,5 +1,6 @@
 import logging
 
+import hbmep as mep
 import numpy as np
 import jax.numpy as jnp
 import numpyro as pyro
@@ -1868,31 +1869,33 @@ class Estimation(BaseModel):
     def circ_mixed_reference(self, intensity, features, response=None, **kw):
         num_data = intensity.shape[0]
         num_features = np.max(features, axis=0) + 1
+        num_response = self.num_response
 
         mask_obs = True
         if response is not None:
             mask_obs = np.invert(np.isnan(response))
 
-        A = pyro.sample("A", dist.Normal(5., 5.))
-        with pyro.plate(site.num_features[1] + "_free", num_features[1] - 1):
-            B_free = pyro.sample("B_free", dist.Normal(0., 5.))
-        B = jnp.concatenate([jnp.zeros(1), B_free])
+        with pyro.plate(site.num_response, num_response):
+            A_raw = pyro.sample("A_raw", dist.Normal(0, 10))    # (6,)
+            A = pyro.deterministic("A", A_raw - jnp.mean(A_raw))
 
-        with pyro.plate(site.num_response + "_free", self.num_response - 1):
-            C_free = pyro.sample("C_free", dist.Normal(0., 5.))
-        C = jnp.concatenate([jnp.zeros(1), C_free])
+        B0 = pyro.sample("B0", dist.Normal(0, 10))
+        B_free = pyro.sample(
+            "B_free",
+            dist.Normal(0, 10).expand([num_features[1] - 1])
+        )
+        B = jnp.concatenate([jnp.zeros(1), B_free])     # (5,)
 
-        w_sigma = pyro.sample("w_sigma", dist.HalfNormal(5.))
-        with pyro.plate(site.num_response, self.num_response):
+        u_sigma = pyro.sample("u_scale", dist.HalfNormal(10))
+        with pyro.plate(site.num_features[0], num_features[0]):
+            u = pyro.sample("u", dist.Normal(0, u_sigma))   # (8,)
+
+        w_sigma = pyro.sample("w_scale", dist.HalfNormal(10))
+        with pyro.plate(site.num_features[1], num_features[1]):
             with pyro.plate(site.num_features[0], num_features[0]):
-                w_raw = pyro.sample("w_raw", dist.Normal(0., 1.))
-                w = pyro.deterministic("w", w_raw * w_sigma)
-
-        # with pyro.plate(site.num_response + "_free", self.num_response - 1):
-        #     with pyro.plate(site.num_features[1] + "_free", num_features[1] - 1):
-        #         D_free = pyro.sample("D_free", dist.Normal(0., 5.))
-        # D = jnp.zeros((num_features[1], self.num_response))
-        # D = D.at[1:, 1:].set(D_free)
+                w_raw = pyro.sample("w_raw", dist.Normal(0, 1))
+                w = w_sigma * w_raw     # (8, 5)
+                w = w - jnp.mean(w, axis=1, keepdims=True)
 
         b_scale = pyro.sample(site.b.scale, dist.HalfNormal(5.))
         g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
@@ -1902,38 +1905,38 @@ class Estimation(BaseModel):
         c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
         c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
 
-        a_sigma = pyro.sample("a_sigma", dist.HalfNormal(5.))
+        a_sigma = pyro.sample("a_sigma", dist.HalfNormal(10))
 
         with pyro.plate(site.num_response, self.num_response):
             with pyro.plate(site.num_features[1], num_features[1]):
                 with pyro.plate(site.num_features[0], num_features[0]):
                     a_mu = (
-                        A
-                        + B[None, :, None]
-                        + C[None, None, :]
-                        # + D[None, :, :]
-                        + w[:, None, :]
-                    )
-                    a_raw = pyro.sample(site.a.raw, dist.Normal(0., 1.))
+                        A[None, None]       # (1, 1, 6)
+                        + B0                # (1,)
+                        + B[None, :, None]  # (1, 5, 1)
+                        + u[:, None, None]  # (8, 1, 1)
+                        + w[..., None]      # (8, 5, 1)
+                    )   # (8, 5, 6)
+                    a_raw = pyro.sample(site.a.raw, dist.Normal(0, 1))
                     a = pyro.deterministic(site.a, a_mu + a_raw * a_sigma)
 
                     b_raw = pyro.sample(site.b.raw, dist.HalfNormal(1))
-                    b = pyro.deterministic(site.b, b_scale * b_raw)
+                    b = b_scale * b_raw
 
                     g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
-                    g = pyro.deterministic(site.g, g_scale * g_raw)
+                    g = g_scale * g_raw
 
                     h_raw = pyro.sample(site.h.raw, dist.HalfNormal(1))
-                    h = pyro.deterministic(site.h, h_scale * h_raw)
+                    h = h_scale * h_raw
 
                     v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
-                    v = pyro.deterministic(site.v, v_scale * v_raw)
+                    v = v_scale * v_raw
 
                     c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
-                    c1 = pyro.deterministic(site.c1, c1_scale * c1_raw)
+                    c1 = c1_scale * c1_raw
 
                     c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
-                    c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
+                    c2 = c2_scale * c2_raw
 
         if self.use_mixture: q = pyro.sample(
             site.outlier_prob, dist.Uniform(0., 0.01)
@@ -1952,340 +1955,6 @@ class Estimation(BaseModel):
                             h[*features.T],
                             v[*features.T],
                             # h[*features.T],
-                            EPS,
-                        ),
-                        c1[*features.T],
-                        c2[*features.T],
-                    )
-                    pyro.deterministic(site.mu, mu)
-
-                    if self.use_mixture:
-                        mixing_distribution = dist.Categorical(
-                            probs=jnp.stack([1 - q, q], axis=-1)
-                        )
-                        component_distributions=[
-                            dist.Gamma(concentration=alpha, rate=beta),
-                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
-                        ]
-                        Mixture = dist.MixtureGeneral(
-                            mixing_distribution=mixing_distribution,
-                            component_distributions=component_distributions
-                        )
-
-                    pyro.sample(
-                        site.obs,
-                        (
-                            Mixture if self.use_mixture
-                            else dist.Gamma(concentration=alpha, rate=beta)
-                        ),
-                        obs=response
-                    )
-
-    def circ_mixed_reference_2(self, intensity, features, response=None, **kw):
-        num_data = intensity.shape[0]
-        num_features = np.max(features, axis=0) + 1
-
-        mask_obs = True
-        if response is not None:
-            mask_obs = np.invert(np.isnan(response))
-
-        A = pyro.sample("A", dist.Normal(5., 5.))
-        with pyro.plate(site.num_features[1] + "_free", num_features[1] - 1):
-            B_free = pyro.sample("B_free", dist.Normal(0., 5.))
-        B = jnp.concatenate([jnp.zeros(1), B_free])
-
-        w_sigma = pyro.sample("w_sigma", dist.HalfNormal(5.))
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate(site.num_features[0], num_features[0]):
-                w_raw = pyro.sample("w_raw", dist.Normal(0., 1.))
-                w = pyro.deterministic("w", w_raw * w_sigma)
-
-        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
-        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(1.))
-        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
-        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
-
-        a_sigma = pyro.sample("a_sigma", dist.HalfNormal(5.))
-
-        with pyro.plate(site.num_response, self.num_response):
-            log_s_loc   = pyro.sample("log_s_loc", dist.Normal(jnp.log(0.3), 1.0))
-            log_s_scale = pyro.sample("log_s_scale", dist.HalfNormal(0.5))
-
-            log_h_loc   = pyro.sample("log_h_loc", dist.Normal(jnp.log(3.0), 1.0))
-            log_h_scale = pyro.sample("log_h_scale", dist.HalfNormal(0.5))
-
-            with pyro.plate(site.num_features[1], num_features[1]):
-                with pyro.plate(site.num_features[0], num_features[0]):
-                    a_mu = A + B[None, :, None] + w[:, None, :]
-                    a_raw = pyro.sample(site.a.raw, dist.Normal(0., 1.))
-                    a = pyro.deterministic(site.a, a_mu + a_raw * a_sigma)
-
-                    s_raw = pyro.sample("s_raw", dist.Normal(0., 1.))
-                    s = pyro.deterministic("s", jnp.exp(log_s_loc + log_s_scale * s_raw))
-
-                    g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
-                    g = pyro.deterministic(site.g, g_scale * g_raw)
-
-                    h_raw = pyro.sample(site.h.raw, dist.Normal(0., 1.))
-                    h = pyro.deterministic(site.h, jnp.exp(log_h_loc + log_h_scale * h_raw))
-
-                    v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
-                    v = pyro.deterministic(site.v, v_scale * v_raw)
-
-                    c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
-                    c1 = pyro.deterministic(site.c1, c1_scale * c1_raw)
-
-                    c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
-                    c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
-
-                    b = pyro.deterministic(site.b, s * (h + v) / (h * v))
-
-        if self.use_mixture: q = pyro.sample(
-            site.outlier_prob, dist.Uniform(0., 0.01)
-        )
-
-        with pyro.handlers.mask(mask=mask_obs):
-            with pyro.plate(site.num_response, self.num_response):
-                with pyro.plate(site.num_data, num_data):
-                    mu, alpha, beta = self.gamma_likelihood(
-                        SF.rectified_logistic,
-                        intensity,
-                        (
-                            a[*features.T],
-                            b[*features.T],
-                            g[*features.T],
-                            h[*features.T],
-                            v[*features.T],
-                            EPS,
-                        ),
-                        c1[*features.T],
-                        c2[*features.T],
-                    )
-                    pyro.deterministic(site.mu, mu)
-
-                    if self.use_mixture:
-                        mixing_distribution = dist.Categorical(
-                            probs=jnp.stack([1 - q, q], axis=-1)
-                        )
-                        component_distributions=[
-                            dist.Gamma(concentration=alpha, rate=beta),
-                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
-                        ]
-                        Mixture = dist.MixtureGeneral(
-                            mixing_distribution=mixing_distribution,
-                            component_distributions=component_distributions
-                        )
-
-                    pyro.sample(
-                        site.obs,
-                        (
-                            Mixture if self.use_mixture
-                            else dist.Gamma(concentration=alpha, rate=beta)
-                        ),
-                        obs=response
-                    )
-
-    def circ_mixed_reference_3(self, intensity, features, response=None, **kw):
-        num_data = intensity.shape[0]
-        num_features = np.max(features, axis=0) + 1
-
-        mask_obs = True
-        if response is not None:
-            mask_obs = np.invert(np.isnan(response))
-
-        A = pyro.sample("A", dist.Normal(5., 5.))
-        with pyro.plate(site.num_features[1] + "_free", num_features[1] - 1):
-            B_free = pyro.sample("B_free", dist.Normal(0., 5.))
-        B = jnp.concatenate([jnp.zeros(1), B_free])
-
-        with pyro.plate(site.num_response + "_free", self.num_response - 1):
-            C_free = pyro.sample("C_free", dist.Normal(0., 5.))
-        C = jnp.concatenate([jnp.zeros(1), C_free])
-
-        w_sigma = pyro.sample("w_sigma", dist.HalfNormal(5.))
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate(site.num_features[0], num_features[0]):
-                w_raw = pyro.sample("w_raw", dist.Normal(0., 1.))
-                w = pyro.deterministic("w", w_raw * w_sigma)
-
-        log_h_loc   = pyro.sample("log_h_loc", dist.Normal(jnp.log(3.0), 0.5))
-        log_h_scale = pyro.sample("log_h_scale", dist.HalfNormal(0.5))
-
-        s_scale = pyro.sample("s_scale", dist.HalfNormal(1.))
-        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
-        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(1.))
-
-        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
-        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
-
-        a_sigma = pyro.sample("a_sigma", dist.HalfNormal(5.))
-
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate(site.num_features[1], num_features[1]):
-                with pyro.plate(site.num_features[0], num_features[0]):
-                    a_mu = (
-                        A
-                        + B[None, :, None]
-                        + C[None, None, :]
-                        # + D[None, :, :]
-                        + w[:, None, :]
-                    )
-                    a_raw = pyro.sample(site.a.raw, dist.Normal(0., 1.))
-                    a = pyro.deterministic(site.a, a_mu + a_raw * a_sigma)
-
-                    s_raw = pyro.sample("s_raw", dist.HalfNormal(1))
-                    s = pyro.deterministic("s", s_scale * s_raw)
-
-                    g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
-                    g = pyro.deterministic(site.g, g_scale * g_raw)
-
-                    h_raw = pyro.sample("h_raw", dist.Normal(0., 1.))
-                    h = pyro.deterministic(site.h, jnp.exp(log_h_loc + log_h_scale * h_raw))
-
-                    v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
-                    v = pyro.deterministic(site.v, v_scale * v_raw)
-
-                    c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
-                    c1 = pyro.deterministic(site.c1, c1_scale * c1_raw)
-
-                    c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
-                    c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
-
-                    b = pyro.deterministic(site.b, s * (h + v) / (h * v))
-
-        if self.use_mixture: q = pyro.sample(
-            site.outlier_prob, dist.Uniform(0., 0.01)
-        )
-
-        with pyro.handlers.mask(mask=mask_obs):
-            with pyro.plate(site.num_response, self.num_response):
-                with pyro.plate(site.num_data, num_data):
-                    mu, alpha, beta = self.gamma_likelihood(
-                        SF.rectified_logistic,
-                        intensity,
-                        (
-                            a[*features.T],
-                            b[*features.T],
-                            g[*features.T],
-                            h[*features.T],
-                            v[*features.T],
-                            EPS,
-                        ),
-                        c1[*features.T],
-                        c2[*features.T],
-                    )
-                    pyro.deterministic(site.mu, mu)
-
-                    if self.use_mixture:
-                        mixing_distribution = dist.Categorical(
-                            probs=jnp.stack([1 - q, q], axis=-1)
-                        )
-                        component_distributions=[
-                            dist.Gamma(concentration=alpha, rate=beta),
-                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
-                        ]
-                        Mixture = dist.MixtureGeneral(
-                            mixing_distribution=mixing_distribution,
-                            component_distributions=component_distributions
-                        )
-
-                    pyro.sample(
-                        site.obs,
-                        (
-                            Mixture if self.use_mixture
-                            else dist.Gamma(concentration=alpha, rate=beta)
-                        ),
-                        obs=response
-                    )
-
-    def circ_mixed_reference_4(self, intensity, features, response=None, **kw):
-        num_data = intensity.shape[0]
-        num_features = np.max(features, axis=0) + 1
-
-        mask_obs = True
-        if response is not None:
-            mask_obs = np.invert(np.isnan(response))
-
-        A = pyro.sample("A", dist.Normal(5., 5.))
-        with pyro.plate(site.num_features[1] + "_free", num_features[1] - 1):
-            B_free = pyro.sample("B_free", dist.Normal(0., 5.))
-        B = jnp.concatenate([jnp.zeros(1), B_free])
-
-        with pyro.plate(site.num_response + "_free", self.num_response - 1):
-            C_free = pyro.sample("C_free", dist.Normal(0., 5.))
-        C = jnp.concatenate([jnp.zeros(1), C_free])
-
-        w_sigma = pyro.sample("w_sigma", dist.HalfNormal(5.))
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate(site.num_features[0], num_features[0]):
-                w_raw = pyro.sample("w_raw", dist.Normal(0., 1.))
-                w = pyro.deterministic("w", w_raw * w_sigma)
-
-        log_h_loc   = pyro.sample("log_h_loc", dist.Normal(jnp.log(3.0), 0.5))
-        log_h_scale = pyro.sample("log_h_scale", dist.HalfNormal(0.5))
-
-        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
-        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(1.))
-
-        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
-        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
-
-        L_Omega_as = pyro.sample("L_Omega_as", dist.LKJCholesky(dimension=2, concentration=2.0))
-        sigma_as = pyro.sample("sigma_as", dist.HalfNormal(jnp.array([5.0, 1.0])))
-        scale_tril = jnp.diag(sigma_as) @ L_Omega_as
-
-        log_s_loc = pyro.sample("log_s_loc", dist.Normal(0.0, 1.0))
-
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate(site.num_features[1], num_features[1]):
-                with pyro.plate(site.num_features[0], num_features[0]):
-                    z_ab = pyro.sample("z_ab", dist.Normal(jnp.zeros(2), jnp.ones(2)).to_event(1))
-                    eps_ab = z_ab @ scale_tril.T
-
-                    a_mu = (
-                        A
-                        + B[None, :, None]
-                        + C[None, None, :]
-                        + w[:, None, :]
-                    )
-                    a = pyro.deterministic(site.a, a_mu + eps_ab[..., 0])
-
-                    log_s = log_s_loc + eps_ab[..., 1]
-                    s = jnp.exp(log_s)
-
-                    g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
-                    g = g_scale * g_raw
-
-                    h_raw = pyro.sample("h_raw", dist.Normal(0., 1.))
-                    h = jnp.exp(log_h_loc + log_h_scale * h_raw)
-
-                    v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
-                    v = v_scale * v_raw
-
-                    c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
-                    c1 = c1_scale * c1_raw
-
-                    c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
-                    c2 = c2_scale * c2_raw
-
-                    b = s * (h + v) / (h * v)
-
-        if self.use_mixture: q = pyro.sample(
-            site.outlier_prob, dist.Uniform(0., 0.01)
-        )
-
-        with pyro.handlers.mask(mask=mask_obs):
-            with pyro.plate(site.num_response, self.num_response):
-                with pyro.plate(site.num_data, num_data):
-                    mu, alpha, beta = self.gamma_likelihood(
-                        SF.rectified_logistic,
-                        intensity,
-                        (
-                            a[*features.T],
-                            b[*features.T],
-                            g[*features.T],
-                            h[*features.T],
-                            v[*features.T],
                             EPS,
                         ),
                         c1[*features.T],
