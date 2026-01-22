@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from core_circ import fit as fit_circ
 from util import plot_thresholds, plot_model
 from constants import BUILD_DIR
-
 os.makedirs(BUILD_DIR, exist_ok=True)
 
 
@@ -25,10 +24,9 @@ def plot_circ(
 ):
     """
     Create one figure:
-      - Top row: 3 subplots (diameters/radii/vertices) via plot_actual_thresholds_by_geometry_with_icons
-      - Bottom row: 1 subplot spanning all columns via barplot_rhs_no_brackets
+      - Top row: 3 subplots (diameters/radii/vertices) via plot_thresholds
+      - Bottom row: 1 subplot spanning all columns via plot_model
     """
-
     print("Creating figure grid ...")
     figsize=(11, 7)
     fig = plt.figure(
@@ -101,14 +99,13 @@ def plot_circ(
 
 
 def main():
-    (
-        model,
-        result,
-        indicator_columns,
-        rhs_terms,
-        set_reference,
-        df,
-    ) = fit_circ()
+    (model,
+    result,
+    indicator_columns,
+    rhs_terms,
+    set_reference,
+    formula,
+    df) = fit_circ()
 
     fig = plot_circ(
         df,
