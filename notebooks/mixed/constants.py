@@ -1,3 +1,4 @@
+# constants.py
 import os
 
 from paper.constants import DATA, REPORTS

@@ -1,4 +1,4 @@
-# util.py
+# util_circ.py
 import os
 
 import numpy as np
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 SEM_TIMES = 1
 NEG_COLOR = "#4C78A8"
+FS_K = .7
 
 
 def add_icons(
@@ -42,13 +43,13 @@ def add_icons(
         ax.add_artist(ab)
         if reference_term is not None and lab == reference_term:
             reference_text_kwargs = dict(
-                fontsize=kw_fs,
+                fontsize=kw_fs * FS_K,
                 ha="center",
                 va="top",
             )
             ax.text(
                 xi, reference_yoffset,
-                "Baseline",
+                "(Baseline)",
                 transform=ax.get_xaxis_transform(),
                 **reference_text_kwargs,
             )
@@ -120,7 +121,6 @@ def plot_thresholds(
                 alpha=kw_rat_line_alpha,
                 linewidth=kw_rat_line_lw,
                 zorder=1,
-                label=f"rat{int(rat)+1:02d}",
             )
             ax.scatter(
                 x, y,
@@ -142,7 +142,6 @@ def plot_thresholds(
                 marker=kw_mean_marker,
                 markersize=np.sqrt(kw_mean_marker_size),
                 zorder=10,
-                label="mean",
             )
         add_icons(
             ax,
@@ -246,7 +245,6 @@ def plot_model(
             "\n(← lower is more effective)"
         )
 
-
         if mask_err.any():
             k = SEM_TIMES
             beta_m = beta[mask_err]
@@ -312,8 +310,8 @@ def plot_model(
         "P": "Distance\npenalty",
         # "OC": "Cosine\ncomponent",
         # "OS": "Sine\ncomponent"
-        "OC": "Cosine",
-        "OS": "Sine"
+        "OC": "Rostro-caudal\ndeviation\npenalty\n(orientation)",
+        "OS": "Midline-lateral\ndeviation\npenalty\n(orientation)"
     }
     # mapping = {
     #     "P": r"$\displaystyle \frac{1}{\mathrm{Distance}}$",
@@ -321,9 +319,9 @@ def plot_model(
     #     "OS": "sine"
     # }
 
-    labels = [mapping[u] if u in mapping else "" for u in terms]
+    labels = [f'\n{mapping[u]}' if u in mapping else "" for u in terms]
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=0, ha="center", fontsize=kw_fs)
+    ax.set_xticklabels(labels, rotation=0, ha="center", fontsize=kw_fs * FS_K, linespacing=1.5)
 
     ax.spines[["right", "top"]].set_visible(False)
     ax.set_yticks(kw_yticks)
@@ -334,5 +332,6 @@ def plot_model(
         # bottom=True, labelbottom=False,
         labelsize=kw_ls
     )
+    ax.set_ylim(-60, 60)
 
     return
