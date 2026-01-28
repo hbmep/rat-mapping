@@ -29,7 +29,7 @@ def fit_mixed_model(
     set_reference: str | None = None
 ):
     data = flat.copy()
-    assert not data.a.isna().sum()
+    assert not data.a.isna().any()
 
     if reverse_distance:
         data["P_size"] = 1 / data["Size"]

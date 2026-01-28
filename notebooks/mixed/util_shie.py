@@ -1,4 +1,4 @@
-# util_circ.py
+# util_shie.py
 import os
 
 import numpy as np
@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 SEM_TIMES = 1
 NEG_COLOR = "#4C78A8"
-FS_K = 0.7
+FS_K = 0.9
 
 
 def add_icons(
@@ -26,8 +26,7 @@ def add_icons(
     ax.set_xticklabels([""] * len(labels))
     for xi, lab in zip(x_positions, labels):
         fname = lab
-        if fname.startswith("-"):
-            fname = fname[1:]
+        fname = fname.replace("k", "-")
         src = os.path.join(icons_dir, f"{fname}.png")
         img = mpl.image.imread(src)
         imagebox = mpl.offsetbox.OffsetImage(img, zoom=icons_params[0])
@@ -147,10 +146,22 @@ def plot_thresholds(
     kw_mean_marker = kws.get("kw_mean_marker", "o")
     kw_mean_marker_size = kws.get("kw_mean_marker_size", 18)
 
-    diameters = ["SE-NW", "S-N", "NE-SW", "E-W"]
-    radii = ["SE-C", "S-C", "SW-C", "W-C", "NW-C", "N-C", "NE-C", "E-C"]
-    vertices = ["-C", "-SE", "-S", "-SW", "-W", "-NW", "-N", "-NE", "-E"]
-    groups = [diameters, radii, vertices]
+    # diameters = ["SE-NW", "S-N", "NE-SW", "E-W"]
+    # radii = ["SE-C", "S-C", "SW-C", "W-C", "NW-C", "N-C", "NE-C", "E-C"]
+    # vertices = ["-C", "-SE", "-S", "-SW", "-W", "-NW", "-N", "-NE", "-E"]
+    # groups = [diameters, radii, vertices]
+
+    mono = [
+        '-C_Bi', 'C-_Bi',
+        '-C_PM', 'C-_PM',
+    ]
+    hd = [
+        'X-C_Bi', 'C-X_Bi',
+        'X-C_PM', 'C-X_PM',
+    ]
+    mono = [u.replace("-", "k") for u in mono]
+    hd = [u.replace("-", "k") for u in hd]
+    groups = [mono + hd]
 
     rats = sorted(df.rat.unique())
     if color_by_rat:
@@ -164,17 +175,20 @@ def plot_thresholds(
         ax.clear()
         x = np.arange(len(conds), dtype=float)
         Y = []
+        Y_no_intercept = []
 
         for rat in rats:
             sub = df.loc[df.rat == rat].reset_index(drop=True)
-            assert sub.shape[0] == 21
+            assert sub.shape[0] == 8
             mapping = dict(zip(sub.label, sub.a))
 
-            y = np.array([mapping[c] for c in conds], dtype=float)
+            y = np.array([mapping[c] for c in conds])
+            y_no_intercept = np.array([mapping[c] for c in conds])
 
             if remove_random_intercept:
                 b_i = result.random_effects.get(rat, None).item()
                 y = y - b_i
+                y_no_intercept = y_no_intercept - b_i
 
             ax.plot(
                 x,
@@ -194,13 +208,20 @@ def plot_thresholds(
                 zorder=2,
             )
             Y.append(y)
+            Y_no_intercept.append(y_no_intercept)
+
+            # ax.set_xticks(x)
+            # ax.set_xticklabels([u.replace("k", "-") for u in conds], rotation=15)
 
         Y = np.array(Y)
+        Y_no_intercept = np.array(Y_no_intercept)
         if show_mean:
             y_mean = np.nanmean(Y, axis=0)
+            y_no_intercept_mean = np.nanmean(Y_no_intercept, axis=0)
             ax.plot(
                 x,
                 y_mean if kw_y_scale == "log2" else (2 ** y_mean),
+                # y_no_intercept_mean if kw_y_scale == "log2" else (2 ** y_no_intercept_mean),
                 color=kw_mean_color,
                 alpha=kw_mean_alpha,
                 linewidth=kw_mean_lw,
@@ -249,6 +270,7 @@ def plot_model(
     reference_yoffset=-0.21,
     **kws,
 ):
+
     ax.clear()
     kw_fs = kws.get("kw_fs")
     kw_ls = kws.get("kw_ls")
@@ -326,8 +348,8 @@ def plot_model(
 
     add_icons(
         ax,
-        x_positions=x[:-len(non_id_terms)],
-        labels=terms[:-len(non_id_terms)],
+        x_positions=x,
+        labels=terms,
         icons_dir=icons_dir,
         icons_params=icons_params,
         reference_term=reference_term,

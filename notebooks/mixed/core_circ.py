@@ -228,13 +228,12 @@ def fit_mixed_model(
     flat: pd.DataFrame,
     *,
     indicator_columns: list,
-    show_intercept: bool = False,
     include_intercept: bool = True,
     reverse_distance: bool = True,
     set_reference: str | None = None,
 ):
     data = flat.copy()
-    data = data.dropna(subset=["a"])
+    assert not data.a.isna().any()
 
     if reverse_distance:
         dm = 'P'
@@ -276,7 +275,6 @@ def fit():
     assert sorted(base_locs) == sorted(ordered_labels)
     base_locs = [u for u in ordered_labels]
 
-    show_intercept = False
     reverse_distance = True
     include_intercept = True
 
@@ -285,7 +283,6 @@ def fit():
 
     result = fit_mixed_model(flat,
                              indicator_columns=base_locs,
-                             show_intercept=show_intercept,
                              include_intercept=include_intercept,
                              reverse_distance=reverse_distance,
                              set_reference=set_reference)

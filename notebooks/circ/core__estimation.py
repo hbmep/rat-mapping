@@ -71,6 +71,8 @@ if __name__ == "__main__":
             model.run_id = "radii"
         case 2:
             model.run_id = "vertices"
+        case 3:
+            model.run_id = "all"
         case _:
             raise ValueError
 
