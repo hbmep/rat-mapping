@@ -1,5 +1,4 @@
 import os
-import sys
 import logging
 
 import hbmep as mep
@@ -46,8 +45,8 @@ def main(run_id):
     model.use_mixture = USE_MIXTURE
     model.test_run = TEST_RUN
     model.run_id = run_id
-    # model._model = model.log2_hb_mvn
-    model._model = model.log2_hb_mvn_gfix
+    # model._model = model.log2_hbmvn
+    model._model = model.log2_hbmvn_gfix
 
     model.mcmc_params = {
         "num_chains": 4,

@@ -30,7 +30,7 @@ def log_transform_fn(df: pd.DataFrame, intensity: str, **kw):
     if min_intensity > 0:
         ...
     else:
-        replace_zero_with = 1.
+        replace_zero_with = 2 ** -1
         assert replace_zero_with < intensities[1]
         logger.info(f"Replacing {min_intensity} with {replace_zero_with}")
         data[intensity] = data[intensity].replace(
