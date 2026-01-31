@@ -1,23 +1,24 @@
-SHELL := /bin/bash
-CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+SHELL := bash
+.ONESHELL:
+.SHELLFLAGS := -eu -o pipefail -c
 
-export
+PY ?= python3.11
+VENV := .venv
+PIP := $(VENV)/bin/python -m pip
+PIP_NO_CACHE := --no-cache-dir
 
-python ?= 3.11
+.PHONY: base env
 
-.PHONY: check-env
-check-env:
-PYTHON3_OK := $(shell python3 --version 2>&1)
-ifeq ('$(PYTHON3_OK)','')
-    $(error package 'python3' not found)
-endif
+base:
+	rm -rf $(VENV) build
+	@echo "Creating virtual environment with $(PY)..."
+	$(PY) -m venv $(VENV)
+	@echo "Upgrading pip..."
+	$(PIP) install --upgrade pip
+	@echo "Purging pip cache..."
+	$(PIP) cache purge
 
-.PHONY: build-base
-build-base: check-env
-	@python$(python) -m venv .venv
-
-.PHONY: env
-env: build-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .
+env: base
+	@echo "Installing package..."
+	$(PIP) install $(PIP_NO_CACHE) -e .
+	$(PIP) install $(PIP_NO_CACHE) -e ../hbmep

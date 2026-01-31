@@ -23,15 +23,15 @@ MAP = {
 	'C6LSW-C6LC': 'SW-C',
 	'C6LW-C6LC': 'W-C',
 }
-VERTICES = [
-    '-C',
-    '-E', '-N', '-NE', '-NW',
-    '-S', '-SE', '-SW', '-W'
-]
 DIAM = [
     'E-W', 'NE-SW', 'S-N', 'SE-NW'
 ]
 RADII = [
     'E-C', 'N-C', 'NE-C', 'NW-C',
     'S-C', 'SE-C', 'SW-C', 'W-C',
+]
+VERTICES = [
+    '-C',
+    '-E', '-N', '-NE', '-NW',
+    '-S', '-SE', '-SW', '-W'
 ]
