@@ -27,11 +27,8 @@ class HB(mep.BaseModel):
         num_features = np.max(features, axis=0) + 1
 
         mask_obs = True
-        mask_features = True
         if response is not None:
             mask_obs = np.invert(np.isnan(response))
-            mask_features = np.full((*num_features, self.num_response), False)
-            mask_features[*features.T] = True
 
         b_scale = pyro.sample(mep.site.b.scale, dist.HalfNormal(5.))
         g_scale = pyro.sample(mep.site.g.scale, dist.HalfNormal(.1))
@@ -43,11 +40,15 @@ class HB(mep.BaseModel):
 
         a_loc = pyro.sample(mep.site.a.loc, dist.Normal(5., 5.))
         a_scale = pyro.sample(mep.site.a.scale, dist.HalfNormal(5.))
-        Rho = pyro.sample(mep.site.Rho ,dist.LKJ(self.num_response, 1.))
+        L_corr = pyro.sample(
+            mep.site.L_corr,
+            dist.LKJCholesky(self.num_response, concentration=1.),
+        )
 
         with pyro.plate_stack(mep.site.num_features, num_features, rightmost_dim=-1):
             a_raw = pyro.sample(
-                mep.site.a.raw, dist.MultivariateNormal(0, (a_scale ** 2) * Rho)
+                mep.site.a.raw,
+                dist.MultivariateNormal(loc=0, scale_tril=a_scale * L_corr),
             )
             a = pyro.deterministic(mep.site.a, a_loc + a_raw)
 
@@ -118,7 +119,8 @@ class HB(mep.BaseModel):
         num_features = np.max(features, axis=0) + 1
 
         mask_obs = True
-        if response is not None: mask_obs = np.invert(np.isnan(response))
+        if response is not None:
+            mask_obs = np.invert(np.isnan(response))
 
         a_loc = pyro.sample(mep.site.a.loc, dist.Normal(5., 5.))
         a_scale = pyro.sample(mep.site.a.scale, dist.HalfNormal(5.))
@@ -201,11 +203,8 @@ class HB(mep.BaseModel):
         num_features = np.max(features, axis=0) + 1
 
         mask_obs = True
-        mask_features = True
         if response is not None:
             mask_obs = np.invert(np.isnan(response))
-            mask_features = np.full((*num_features, self.num_response), False)
-            mask_features[*features.T] = True
 
         b_scale = pyro.sample(mep.site.b.scale, dist.HalfNormal(5.))
         g_scale = pyro.sample(mep.site.g.scale, dist.HalfNormal(.1))
@@ -217,12 +216,16 @@ class HB(mep.BaseModel):
 
         a_loc = pyro.sample(mep.site.a.loc, dist.Normal(5., 5.))
         a_scale = pyro.sample(mep.site.a.scale, dist.HalfNormal(5.))
-        Rho = pyro.sample(mep.site.Rho ,dist.LKJ(self.num_response, 1.))
+        L_corr = pyro.sample(
+            mep.site.L_corr,
+            dist.LKJCholesky(self.num_response, concentration=1.),
+        )
 
         with pyro.plate_stack(mep.site.num_features1_, num_features[1:], rightmost_dim=-1):
             with pyro.plate(mep.site.num_features[0], num_features[0]):
                 a_raw = pyro.sample(
-                    mep.site.a.raw, dist.MultivariateNormal(0, (a_scale ** 2) * Rho)
+                    mep.site.a.raw,
+                    dist.MultivariateNormal(loc=0, scale_tril=a_scale * L_corr),
                 )
                 a = pyro.deterministic(mep.site.a, a_loc + a_raw)
 
@@ -298,7 +301,8 @@ class HB(mep.BaseModel):
         num_features = np.max(features, axis=0) + 1
 
         mask_obs = True
-        if response is not None: mask_obs = np.invert(np.isnan(response))
+        if response is not None:
+            mask_obs = np.invert(np.isnan(response))
 
         a_loc = pyro.sample(mep.site.a.loc, dist.Normal(5., 5.))
         a_scale = pyro.sample(mep.site.a.scale, dist.HalfNormal(5.))
