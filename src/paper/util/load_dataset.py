@@ -110,10 +110,10 @@ def load_circ(
 
 def load_shie(
     *,
-    intensity,
     features,
     run_id,
     set_reference=False,
+    add_zero=True,
     **kw
 ):
     _, _, DATA_PATH, _ = get_paths(shie_constants.EXPERIMENT)
@@ -125,38 +125,72 @@ def load_shie(
     # Load data
     src = DATA_PATH
     data = pd.read_csv(src)
-    df = log_transform_intensity(data, intensity)
-    df[features[1]] = df[features[1]].replace(POSITIONS_MAP)
+    df = data.copy()
+
+    if add_zero:
+        feat = ["compound_position", "compound_charge_params"]
+        pid = "participant"
+        y = "pulse_amplitude"
+        idx0 = df[y].eq(0)
+        zero_df = df.loc[idx0].copy()
+        rest_df = df.loc[~idx0].copy()
+        assert set(df[pid].unique()) <= set(zero_df[pid].unique())
+        nfeat = zero_df.groupby(pid)[feat].apply(lambda x: x.drop_duplicates().shape[0])
+        assert (nfeat == 1).all(), nfeat[nfeat != 1]
+        combos = df[[pid] + feat].drop_duplicates()
+        zero_broadcast = (
+            zero_df.drop(columns=feat)
+            .merge(combos, on=pid, how="inner")
+        )
+        df2 = pd.concat([rest_df, zero_broadcast], ignore_index=True)
+        df = df2.copy()
+
+    cats = df[features[1]].unique().tolist()
+    mapping = {}
+    for cat in cats:
+        assert cat not in mapping
+        l, r = cat.split("-")
+        mapping[cat] = l[3:] + "-" + r[3:]
+    assert mapping == POSITIONS_MAP
+    df[features[1]] = df[features[1]].replace(mapping)
+
+    cats = df[features[2]].unique().tolist()
+    assert set(cats) == set(CHARGES_MAP.keys())
     df[features[2]] = df[features[2]].replace(CHARGES_MAP)
+   
+    combos = df[features[1:]].apply(tuple, axis=1).unique().tolist()
+    assert sorted(combos) == sorted(WITH_GROUND + NO_GROUND)
 
     assert run_id in {"ground", "no-ground", "all"}
     match run_id:
-        case "ground": subset = WITH_GROUND
-        case "no-ground": subset = NO_GROUND
-        case "all": subset = WITH_GROUND + NO_GROUND
-        case _: raise ValueError
-
+        case "ground":
+            subset = WITH_GROUND
+        case "no-ground":
+            subset = NO_GROUND
+        case "all":
+            subset = WITH_GROUND + NO_GROUND
+ 
     if set_reference:
         reference = ('-C', 'Biphasic')
         match run_id:
-            case "no-ground": subset += [reference]
-            case "ground" | "all": pass
-            case _: raise ValueError
+            case "no-ground":
+                subset += [reference]
+            case "ground" | "all":
+                ...
 
     assert set(subset) <= set(
         df[features[1:]].apply(tuple, axis=1).values.tolist()
     )
-    ind = df[features[1:]].apply(tuple, axis=1).isin(subset)
-    df = df[ind].reset_index(drop=True).copy()
+    idx = df[features[1:]].apply(tuple, axis=1).isin(subset)
+    df = df.loc[idx].reset_index(drop=True).copy()
 
     if set_reference:
-        ind = df[features[1:]].apply(tuple, axis=1).isin([reference])
-        assert df.loc[ind, features[1]].nunique() == 1
-        assert df.loc[ind, features[1]].unique()[0] == "-C"
-        df.loc[ind, features[1]] = " -C"
+        idx = df[features[1:]].apply(tuple, axis=1).isin([reference])
+        assert df.loc[idx, features[1]].nunique() == 1
+        assert df.loc[idx, features[1]].unique()[0] == "-C"
+        df.loc[idx, features[1]] = " -C"
 
     return df
-
 
 
 def load_csmalar_data(data: pd.DataFrame, mat=None):

@@ -1,20 +1,21 @@
 import os
-import sys
 import logging
 
-import pandas as pd
-import numpy as np
-from hbmep.util import timing, setup_logging
+import hbmep as mep
 
 from paper.model import HB
-from paper.util import load_shie, run
+from paper.util import run, load_shie
 from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
+USE_MIXTURE = True
+TEST_RUN = True
+TEST_RUN = not TEST_RUN
 
-@timing
-def main(model):
+
+@mep.timing
+def run_model(model: mep.BaseModel):
     run_id = model.run_id
     df = load_shie(**model.variables, run_id=run_id)
 
@@ -23,32 +24,33 @@ def main(model):
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
         model.response = model.response[:3]
-        model.mcmc_params = {
-            "num_chains": 4,
-            "thinning": 1,
-            "num_warmup": 400,
-            "num_samples": 400,
-        }
+        model.mcmc_params["num_warmup"] = 400
+        model.mcmc_params["num_samples"] = 400
+        model.build_dir = os.path.join(model.build_dir, "test_run")
+        os.makedirs(model.build_dir, exist_ok=True)
 
+    log_transform = False
+    if "log2" in model._model.__name__:
+        log_transform = True
+
+    mep.enable_logging(model.build_dir)
     logger.info(f"*** run id: {run_id} ***")
     logger.info(f"*** model: {model._model.__name__} ***")
-    run(df, model, extra_fields=["num_steps"])
+    run(model, df, log_transform=log_transform, extra_fields=["num_steps"])
     return
 
 
-if __name__ == "__main__":
+def main(run_id):
     model = HB(toml_path=TOML_PATH)
-    model.use_mixture = False
-    model.test_run = True
-    model.use_mixture = True
-    model.run_id = "all"
-
-    model._model = model.hb_mvn_rl_masked
-    # model._model = model.robust_hb_mvn_rl_masked
+    model.use_mixture = USE_MIXTURE
+    model.test_run = TEST_RUN
+    model.run_id = run_id
+    # model._model = model.log2_hb_mvn
+    model._model = model.log2_hb_mvn_gfix
 
     model.mcmc_params = {
         "num_chains": 4,
-        "thinning": 4,
+        "thinning": 1,
         "num_warmup": 4000,
         "num_samples": 4000,
     }
@@ -58,7 +60,16 @@ if __name__ == "__main__":
     }
 
     model.build_dir = os.path.join(
-        BUILD_DIR, "hb", model.name, model.run_id, model._model.__name__
+        BUILD_DIR,
+        "hb",
+        model.name,
+        model.run_id,
+        model._model.__name__
     )
-    setup_logging(model.build_dir)
-    main(model)
+    run_model(model)
+    return
+
+
+if __name__ == "__main__":
+    run_id = "all"
+    main(run_id)
