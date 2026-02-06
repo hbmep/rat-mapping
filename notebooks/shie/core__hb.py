@@ -10,8 +10,12 @@ from constants import BUILD_DIR, TOML_PATH
 logger = logging.getLogger(__name__)
 
 USE_MIXTURE = True
+USE_MIXTURE = not USE_MIXTURE
+
 TEST_RUN = True
 TEST_RUN = not TEST_RUN
+
+RESPONSE = ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
 
 
 @mep.timing
@@ -40,13 +44,17 @@ def run_model(model: mep.BaseModel):
     return
 
 
-def main(run_id):
+def main(run_id, response=None):
     model = HB(toml_path=TOML_PATH)
     model.use_mixture = USE_MIXTURE
     model.test_run = TEST_RUN
     model.run_id = run_id
-    # model._model = model.log2_hbmvn
-    model._model = model.log2_hbmvn_gfix
+
+    model._model = model.log2_hb_mvn
+    # model._model = model.log2_hb_mvn_gfix
+
+    if response is not None:
+        model.response = [response]
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -63,9 +71,14 @@ def main(run_id):
         BUILD_DIR,
         "hb",
         model.name,
+        model._model.__name__,
         model.run_id,
-        model._model.__name__
     )
+
+    if response is not None:
+        assert len(model.response) == 1
+        model.build_dir = os.path.join(model.build_dir, f"res_{model.response[0]}")
+
     run_model(model)
     return
 

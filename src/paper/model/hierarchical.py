@@ -22,7 +22,7 @@ class HB(mep.BaseModel):
     @name.setter
     def name(self, value): return value
 
-    def log2_hbmvn(self, intensity, features, response=None, **kw):
+    def log2_hb_mvn(self, intensity, features, response=None, **kw):
         num_data = intensity.shape[0]
         num_features = np.max(features, axis=0) + 1
 
@@ -111,7 +111,7 @@ class HB(mep.BaseModel):
                         obs=response
                     )
 
-    def log2_hbmvn_gfix(self, intensity, features, response=None, **kw):
+    def log2_hb_mvn_gfix(self, intensity, features, response=None, **kw):
         num_data = intensity.shape[0]
         num_features = np.max(features, axis=0) + 1
 
@@ -143,6 +143,7 @@ class HB(mep.BaseModel):
             with pyro.plate(mep.site.num_features[0], num_features[0]):
                 g_raw = pyro.sample(mep.site.g.raw, dist.HalfNormal(1))
                 g = g_scale * g_raw     # (P, M)
+                g = g[:, None]
 
         with pyro.plate(mep.site.num_response, self.num_response):
             with pyro.plate_stack(mep.site.num_features[1], num_features[1:], rightmost_dim=-2):
@@ -172,7 +173,7 @@ class HB(mep.BaseModel):
                         intensity,
                         a[*features.T],
                         b[*features.T],
-                        g[features[..., 0]],
+                        g[*features.T],
                         h[*features.T],
                         v[*features.T],
                         EPS
@@ -188,7 +189,7 @@ class HB(mep.BaseModel):
                         )
                         component_distributions=[
                             dist.Gamma(concentration=alpha, rate=beta),
-                            dist.HalfNormal(scale=(g[features[..., 0]] + h[*features.T]))
+                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
                         ]
                         Mixture = dist.MixtureGeneral(
                             mixing_distribution=mixing_distribution,
