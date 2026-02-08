@@ -10,7 +10,7 @@ from constants import BUILD_DIR, TOML_PATH
 logger = logging.getLogger(__name__)
 
 USE_MIXTURE = True
-USE_MIXTURE = not USE_MIXTURE
+# USE_MIXTURE = not USE_MIXTURE
 
 TEST_RUN = True
 TEST_RUN = not TEST_RUN
@@ -50,8 +50,10 @@ def main(run_id, response=None):
     model.test_run = TEST_RUN
     model.run_id = run_id
 
-    model._model = model.log2_hb_mvn
+    # model._model = model.log2_hb_mvn
     # model._model = model.log2_hb_mvn_gfix
+
+    model._model = model.log2_hb_mvn_mixed
 
     if response is not None:
         model.response = [response]

@@ -10,7 +10,7 @@ from constants import BUILD_DIR, TOML_PATH
 logger = logging.getLogger(__name__)
 
 USE_MIXTURE = True
-USE_MIXTURE = not USE_MIXTURE
+# USE_MIXTURE = not USE_MIXTURE
 
 TEST_RUN = True
 TEST_RUN = not TEST_RUN
@@ -24,13 +24,14 @@ def run_model(model: mep.BaseModel):
     df = load_circ(**model.variables, run_id=run_id)
 
     if model.test_run:
-        subset = ["amap01", "amap02"]
+        subset = ["amap03"]
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
-        model.response = model.response[:3]
+        # model.response = model.response[:3]
         model.mcmc_params["num_warmup"] = 400
         model.mcmc_params["num_samples"] = 400
-        model.build_dir = os.path.join(model.build_dir, "test_run")
+        # model.build_dir = os.path.join(model.build_dir, "test_run")
+        model.build_dir = os.path.join(model.build_dir, subset[0])
         os.makedirs(model.build_dir, exist_ok=True)
 
     log_transform = False
@@ -50,8 +51,10 @@ def main(run_id, response=None):
     model.test_run = TEST_RUN
     model.run_id = run_id
 
-    model._model = model.log2_hb_mvn
+    # model._model = model.log2_hb_mvn
     # model._model = model.log2_hb_mvn_gfix
+
+    model._model = model.log2_hb_mvn_mixed
 
     if response is not None:
         model.response = [response]
