@@ -19,8 +19,8 @@ def main(model):
     df = load_lat(**model.variables, run_id=run_id)
 
     if model.test_run:
-        os.makedirs(model.build_dir, exist_ok=True)
         model.build_dir = os.path.join(model.build_dir, "test_run")
+        os.makedirs(model.build_dir, exist_ok=True)
         subset = ["amap01", "amap02"]
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
@@ -40,13 +40,17 @@ if __name__ == "__main__":
     model = HB(toml_path=TOML_PATH)
     model.features = ["participant", "segment", "lat"]
     model.use_mixture = True
-    model.test_run = True
+    model.test_run = False
+    # model.test_run = True
 
-    # model._model = model.hb_mvn_rl_masked
-    model._model = model.robust_hb_mvn_rl_masked
+    # model._model = model.hb_rl_masked
+    model._model = model.hb_mvn_rl_masked
+    # model._model = model.robust_hb_mvn_rl_masked
 
-    model.run_id = "lat-small-ground"
+    # model.run_id = "lat-small-ground"
     # model.run_id = "lat-big-ground"
+    # model.run_id = "lat-small-inbetween"
+    model.run_id = "lat-big-inbetween"
 
     model.mcmc_params = {
         "num_chains": 4,

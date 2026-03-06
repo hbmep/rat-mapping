@@ -453,15 +453,27 @@ def load_lat(
     GROUND_SMALL = smalar_constants.GROUND_SMALL
     NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
     NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
+    INBETWEEN_BIG = smalar_constants.INBETWEEN_BIG
+    INBETWEEN_SMALL = smalar_constants.INBETWEEN_SMALL
 
     # Load data
-    src = DATA_PATH
+    # src = DATA_PATH
+    # if "between" in run_id:
+    #     src = src.replace(".csv", "_inbetween.csv")
+    src = DATA_PATH.replace(".csv", "_inbetween.csv")
     data = pd.read_csv(src)
+
+    # df_a = pd.read_csv(DATA_PATH); print(df_a.shape)
+    # df_b = pd.read_csv(DATA_PATH.replace(".csv", "_inbetween.csv")); print(df_b.shape)
+    # is_subset = df_a.merge(df_b).shape[0] == df_a.shape[0]
+    # print(is_subset)
+
     df = log_transform_intensity(data, intensity)
     
     assert run_id in {
-        "lat-small-ground", "lat-big-ground", "lat-small-no-ground",
-        "lat-big-no-ground"
+        "lat-small-ground", "lat-big-ground",
+        "lat-small-no-ground", "lat-big-no-ground",
+        "lat-small-inbetween", "lat-big-inbetween"
     }
     subset = []
     match run_id:
@@ -469,6 +481,8 @@ def load_lat(
         case "lat-big-ground": subset = GROUND_BIG
         case "lat-small-no-ground": subset = NO_GROUND_SMALL
         case "lat-big-no-ground": subset = NO_GROUND_BIG
+        case "lat-small-inbetween": subset = GROUND_SMALL + INBETWEEN_SMALL
+        case "lat-big-inbetween": subset = GROUND_BIG + INBETWEEN_BIG
         case _: raise ValueError
 
     if set_reference:
@@ -486,12 +500,29 @@ def load_lat(
 
     assert len(set(subset)) == len(subset)
     cols = ["lat", "segment", "compound_size"]
-    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    if "big-inbetween" in run_id:
+        ...
+    else:
+        assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
     idx = df[cols].apply(tuple, axis=1).isin(subset)
     df = df[idx].reset_index(drop=True).copy()
-    df[features[-1]] = df[features[-1]].replace(
-        {"-LM1": "-LM", "M-LM1": "M-LM"}
-    )
+
+    p = df[features[-1]].apply(lambda x: x.replace("LM1", "LM")).tolist()
+    q = df[features[-1]].replace(
+        {
+            "-LM1": "-LM", "M-LM1": "M-LM",
+            "LM1-L": "LM-L",
+            "LM1-LL": "LM-LL",
+            "LM2-LM1": "LM2-LM",
+            "M-LM1": "M-LM"
+        }
+    ).tolist()
+    assert p == q
+    df[features[-1]] = df[features[-1]].apply(lambda x: x.replace("LM1", "LM"))
+
+    if "inbetween" in run_id:
+        df.segment = df.segment.apply(lambda x: "-" + x.split("-")[1])
+        assert df.segment.nunique() == 2
 
     if set_reference:
         if "no-ground" in run_id:
