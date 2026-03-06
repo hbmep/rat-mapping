@@ -1114,11 +1114,11 @@ def make_compare3p_bar(
     return (fig, axes), positions, diff_mean, diff_err, colors, negate,
 
 
-def make_pdf(figs, output_path):
+def make_pdf(figs, output_path, dpi=100):
     print("Making pdf...")
     with PdfPages(output_path) as pdf:
         for fig in figs:
-            pdf.savefig(fig, bbox_inches='tight') 
+            pdf.savefig(fig, bbox_inches='tight', dpi=dpi) 
     print(f"Saved to {output_path}")
     return
 

@@ -72,7 +72,7 @@ def load_shie(model_dir):
     )
 
 
-def load_smalar(model_dir, estimation=False):
+def load_smalar(model_dir, estimation=False, plot_curves=False):
     src = os.path.join(model_dir, "inf.pkl")
     with open(src, "rb") as f:
         df, encoder, posterior = pickle.load(f)
@@ -109,7 +109,7 @@ def load_smalar(model_dir, estimation=False):
         sizes = list(zip(sizes, sizes_inv))
 
     num_features, mask_features = None, None
-    if not estimation:
+    if not estimation and not plot_curves:
         named_params = [site.a, site.b, site.g, site.h, site.v]
         posterior = {u: posterior[u] for u in named_params if u in posterior.keys()}
         # for u, v in posterior.items(): print(u, v.shape)
